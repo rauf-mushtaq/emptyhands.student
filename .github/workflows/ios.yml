@@ -1,0 +1,81 @@
+# Builds the iOS app. With the App Store Connect secrets set (see mobile/README.md) it signs
+# the app and uploads it to TestFlight; without them it just checks that the app compiles.
+name: iOS app
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['index.html', 'privacy.html', 'app.css', 'js/**', 'assets/img/**', 'mobile/**', '.github/workflows/ios.yml']
+
+jobs:
+  build:
+    runs-on: macos-15
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      HAS_ASC: ${{ secrets.APP_STORE_CONNECT_KEY_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Use the newest Xcode
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+          xcodebuild -version
+
+      - run: npm ci
+      - run: npm run build && npx cap sync ios
+
+      - name: Firebase config (GoogleService-Info.plist)
+        env:
+          GOOGLE_SERVICE_INFO_PLIST: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST }}
+        run: |
+          f=ios/App/App/GoogleService-Info.plist
+          if [ -n "$GOOGLE_SERVICE_INFO_PLIST" ]; then printf '%s' "$GOOGLE_SERVICE_INFO_PLIST" > "$f"; fi
+          if [ ! -f "$f" ]; then
+            echo "::warning::No GoogleService-Info.plist — using a placeholder; this build can only be used to check compilation."
+            printf '%s' '<?xml version="1.0" encoding="UTF-8"?><plist version="1.0"><dict><key>GOOGLE_APP_ID</key><string>1:0:ios:0</string><key>GCM_SENDER_ID</key><string>0</string><key>API_KEY</key><string>placeholder</string><key>PROJECT_ID</key><string>placeholder</string><key>BUNDLE_ID</key><string>uk.co.emptyhands.app</string></dict></plist>' > "$f"
+          fi
+
+      - name: Check it compiles (no signing)
+        if: env.HAS_ASC != 'true'
+        working-directory: mobile/ios/App
+        run: |
+          xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build | tail -n 40
+          exit ${PIPESTATUS[0]}
+
+      - name: Archive and upload to TestFlight
+        if: env.HAS_ASC == 'true'
+        working-directory: mobile/ios/App
+        env:
+          KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          KEY_BASE64: ${{ secrets.APP_STORE_CONNECT_KEY_BASE64 }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          key="$RUNNER_TEMP/AuthKey_$KEY_ID.p8"
+          echo "$KEY_BASE64" | base64 --decode > "$key"
+          auth=(-allowProvisioningUpdates -authenticationKeyPath "$key" -authenticationKeyID "$KEY_ID" -authenticationKeyIssuerID "$ISSUER_ID")
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" DEVELOPMENT_TEAM="$TEAM_ID" CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            "${auth[@]}" archive | tail -n 40
+          test ${PIPESTATUS[0]} -eq 0
+          cat > "$RUNNER_TEMP/export.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" -exportOptionsPlist "$RUNNER_TEMP/export.plist" \
+            -exportPath "$RUNNER_TEMP/export" "${auth[@]}"

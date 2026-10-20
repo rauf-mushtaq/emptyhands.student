@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">EmptyHands</string>
+    <string name="title_activity_main">EmptyHands</string>
+    <string name="package_name">uk.co.emptyhands.app</string>
+    <string name="custom_url_scheme">uk.co.emptyhands.app</string>
+</resources>

@@ -1,0 +1,27 @@
+{
+  "appId": "uk.co.emptyhands.app",
+  "appName": "EmptyHands",
+  "webDir": "www",
+  "backgroundColor": "#f6f2ea",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#f6f2ea"
+  },
+  "android": {
+    "backgroundColor": "#f6f2ea"
+  },
+  "plugins": {
+    "FirebaseMessaging": {
+      "presentationOptions": ["alert", "badge", "sound"]
+    }
+  },
+  "experimental": {
+    "ios": {
+      "spm": {
+        "packageOptions": {
+          "@capacitor-firebase/messaging": { "symlink": true }
+        }
+      }
+    }
+  }
+}
