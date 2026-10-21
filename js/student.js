@@ -29,7 +29,8 @@ function readProfile(form) {
     phone: (f.get('phone') || '').trim(),
     disciplines: f.getAll('disciplines'),
     dojo: f.get('dojo') || 'ilford',
-    grade: f.get('grade') || 'none',
+    // Once accepted, only Sensei changes the belt (the field is locked), so leave it out.
+    ...(form.elements.grade.disabled ? {} : { grade: f.get('grade') || 'none' }),
   };
 }
 function fillProfile(form, p) {
@@ -37,6 +38,9 @@ function fillProfile(form, p) {
   $$('[name=disciplines]', form).forEach(c => { c.checked = (p.disciplines || []).includes(c.value); });
   $$('[name=dojo]', form).forEach(r => { r.checked = r.value === (p.dojo || 'ilford'); });
   form.elements.grade.value = p.grade || 'none';
+  const locked = form.id === 'form-profile' && p.role === 'student';
+  form.elements.grade.disabled = locked;
+  $('.belt-hint', form).hidden = !locked;
 }
 function showError(form, msg) {
   const el = $('.form-error', form);
@@ -196,8 +200,14 @@ async function enter(user) {
 function onProfile(p) {
   if (!p || !state.profile) return;
   const was = state.profile.role;
+  const oldBelt = state.profile.grade;
   state.profile = { ...state.profile, ...p };
   if (blocked(p)) { stopAll(); return; }
+  fillProfile($('#form-profile'), state.profile);
+  if (p.grade && oldBelt && p.grade !== oldBelt) {
+    toast('Sensei has updated your belt to ' + (GRADES[p.grade] || p.grade) + (p.grade === 'dan' ? ' — congratulations!' : '.'));
+    drawHome(); drawCalendar(); drawHomework(); drawMenu();
+  }
   if (was !== 'student' && p.role === 'student') {
     startMember();
     toast('You’ve been accepted — welcome to EmptyHands!');
