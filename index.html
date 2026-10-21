@@ -78,7 +78,7 @@
         <ol class="upcoming" id="home-upcoming"></ol>
       </div>
       <div>
-        <div class="card-head"><h2>Latest notices</h2><button class="linkish" data-go="notices">All notices →</button></div>
+        <div class="card-head"><h2>Latest from your coaches</h2><button class="linkish" data-go="menu">EmptyHands menu →</button></div>
         <div id="home-notices"></div>
       </div>
     </div>
@@ -105,17 +105,35 @@
       </span>
     </div>
     <div class="cal-year" id="cal-grid"></div>
+    <div class="keydates" id="cal-keydates"></div>
     <div class="card timings" id="cal-timings"></div>
     <p class="muted fine" id="cal-empty" hidden>The calendar for this year hasn’t been published yet — check back soon.</p>
   </section>
 
-  <!-- Notices -->
-  <section class="view" id="view-notices" hidden>
+  <!-- EmptyHands menu: coach notices and a private chat with the coaches -->
+  <section class="view" id="view-menu" hidden>
     <div class="view-head">
-      <div><p class="eyebrow">From your coaches</p><h1>Notices</h1></div>
+      <div><p class="eyebrow">Notices &amp; messages</p><h1>EmptyHands menu</h1></div>
       <div class="view-actions"><button class="btn btn--ghost btn--sm" id="enable-alerts" hidden>Turn on alerts</button></div>
     </div>
-    <div id="notice-list"></div>
+    <div class="card pending-card" id="menu-pending" hidden>
+      <div class="pending-kanji" aria-hidden="true">待</div>
+      <h2>Request sent</h2>
+      <p>Thanks for joining! A coach will check your details and accept your request soon. Once they do, this is where you’ll get notices from your coaches and can message them.</p>
+      <p class="muted fine">In the meantime you can already use the calendar and key dates.</p>
+    </div>
+    <div id="menu-chat" hidden>
+      <p class="muted fine chat-intro">Notices go to everyone in your group. Messages here are private between you and the EmptyHands coaches.</p>
+      <div class="chat-feed" id="menu-feed" aria-live="polite"></div>
+      <form class="chat-compose" id="form-chat" novalidate>
+        <label class="chat-from" id="chat-from-wrap" hidden>Sending as<select name="author" id="chat-from"></select></label>
+        <div class="chat-row">
+          <label class="sr-only" for="chat-text">Message to your coaches</label>
+          <textarea id="chat-text" name="text" rows="1" maxlength="2000" placeholder="Message your coaches…" required></textarea>
+          <button class="btn btn--seal" type="submit">Send</button>
+        </div>
+      </form>
+    </div>
   </section>
 
   <!-- Profile -->
@@ -139,7 +157,7 @@
 <nav class="tabbar" id="tabbar" aria-label="App" hidden>
   <button data-go="home" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</button>
   <button data-go="calendar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar</button>
-  <button data-go="notices"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 21h4"/></svg>Notices<span class="badge" id="badge" hidden></span></button>
+  <button data-go="menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>Menu<span class="badge" id="badge" hidden></span></button>
   <button data-go="profile"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Profile</button>
 </nav>
 

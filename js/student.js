@@ -2,12 +2,16 @@ import { backend, DEMO, isCoach, errorText } from './backend.js';
 import { COACH_URL } from './config.js';
 import { NATIVE, pushState, enablePush, onPushTap, shareFile } from './native.js';
 import {
-  $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar,
+  $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar, messageHTML,
   calendarYears, isRelevant, noticeIsFor, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
   toast, busy, registerSW,
 } from './common.js';
 
-const state = { user: null, profile: null, notices: [], cal: null, year: new Date().getFullYear(), view: 'home', stopNotices: null, seen: null };
+const VIEWS = ['home', 'calendar', 'menu', 'profile'];
+const state = {
+  user: null, profile: null, notices: [], thread: [], chat: null, cal: null,
+  year: new Date().getFullYear(), view: 'home', stops: [], member: false, seen: new Set(),
+};
 let api;
 
 // ---- profile form fields (shared by sign-up and profile) ----
@@ -41,6 +45,7 @@ function showError(form, msg) {
 
 // ---- views ----
 function show(id) {
+  if (id === 'notices') id = 'menu'; // old links
   $('#loading').hidden = true;
   $$('.view').forEach(v => { v.hidden = v.id !== 'view-' + id; });
   const signedIn = !['auth', 'message'].includes(id);
@@ -48,9 +53,8 @@ function show(id) {
   document.body.classList.toggle('has-tabbar', signedIn);
   $$('#tabbar button').forEach(b => b.toggleAttribute('aria-current', b.dataset.go === id));
   if (signedIn) state.view = id;
-  if (id === 'notices') markRead();
+  if (id === 'menu') { drawMenu(); markRead(); scrollFeed(); } else scrollTo(0, 0);
   if (id === 'calendar') drawCalendar(true);
-  scrollTo(0, 0);
 }
 document.addEventListener('click', e => {
   const go = e.target.closest('[data-go]');
@@ -98,31 +102,39 @@ $('#form-signup').addEventListener('submit', async e => {
   });
 });
 
+// New accounts start as a join request; a coach accepts or declines it in the coach panel.
 async function createProfile(user, p) {
   state.user = user;
   state.needsProfile = null;
-  const profile = { ...p, email: user.email, role: 'student', createdAt: Date.now(), lastRead: 0 };
+  const profile = { ...p, email: user.email, role: 'pending', createdAt: Date.now(), lastRead: 0 };
   await api.saveProfile(user.uid, profile);
   state.pendingProfile = null;
   state.profile = profile;
   await enter(user);
+  show('menu');
 }
 
 // ---- signed-in ----
+function stopAll() {
+  state.stops.forEach(stop => stop && stop());
+  state.stops = [];
+  state.member = false;
+  state.notices = []; state.thread = []; state.chat = null; state.seen = new Set();
+  state.loadedNotices = state.loadedThread = false; state.prevRead = null;
+}
+
 async function onAuth(user) {
-  if (state.stopNotices) { state.stopNotices(); state.stopNotices = null; }
+  stopAll();
   state.user = user;
   if (!user) { state.profile = null; $('#top-user').hidden = true; resetAuthForms(); show('auth'); return; }
   if (state.pendingProfile) return; // sign-up is still writing the profile
   try { state.profile = await api.getProfile(user.uid); } catch (err) { toast(errorText(err), 'bad'); }
-  if (state.profile && state.profile.role === 'removed') {
-    return message('Your account is paused', 'The dojo has removed this account from the student list. If you think this is a mistake, please contact us on 07931 300470 or <a href="mailto:info@emptyhands.co.uk">info@emptyhands.co.uk</a>.');
-  }
+  if (blocked(state.profile)) return;
   if (!state.profile && await isCoach(user)) {
     return message('You’re signed in as a coach', `<b>${esc(user.email)}</b> is a coach account. Open the <a href="${COACH_URL}" target="_blank" rel="noopener">coach panel</a>, or sign out to use the student app.`);
   }
   if (!state.profile) {
-    // Signed in but no profile (e.g. removed by a coach, or sign-up interrupted): ask for details again.
+    // Signed in but no profile (e.g. sign-up interrupted): ask for details again.
     show('auth');
     $('[data-auth=signup]').click();
     const form = $('#form-signup');
@@ -133,6 +145,13 @@ async function onAuth(user) {
     return;
   }
   await enter(user);
+}
+
+const CONTACT = 'please contact us on 07931 300470 or <a href="mailto:info@emptyhands.co.uk">info@emptyhands.co.uk</a>';
+function blocked(p) {
+  if (p && p.role === 'removed') { message('Your account is paused', 'The dojo has removed this account from the student list. If you think this is a mistake, ' + CONTACT + '.'); return true; }
+  if (p && p.role === 'declined') { message('Your request wasn’t accepted', 'A coach couldn’t match this account to a student at EmptyHands. If you think this is a mistake, ' + CONTACT + '.'); return true; }
+  return false;
 }
 
 function message(title, html) {
@@ -156,41 +175,90 @@ async function enter(user) {
   const p = state.profile;
   $('#top-user').hidden = false;
   $('#top-user').textContent = p.name.split(' ')[0];
-  state.seen = new Set();
   state.cal = await loadCalendar(api, state.year);
-  state.stopNotices = api.watchNotifications(list => onNotices(list));
   fillProfile($('#form-profile'), p);
+  fillSender();
   $('#profile-email').textContent = 'Signed in as ' + user.email;
+  // Live profile: notices when a coach accepts, removes or declines this account.
+  state.stops.push(api.watchProfile(user.uid, onProfile));
+  if (p.role === 'student') startMember();
   const start = location.hash.slice(1);
-  show(['home', 'calendar', 'notices', 'profile'].includes(start) ? start : 'home');
+  show(VIEWS.includes(start) ? start : start === 'notices' ? 'menu' : 'home');
   drawHome();
   alertsButton();
   if (NATIVE && !DEMO && (await pushState()) === 'granted') turnOnPush(true);
 }
 
+function onProfile(p) {
+  if (!p || !state.profile) return;
+  const was = state.profile.role;
+  state.profile = { ...state.profile, ...p };
+  if (blocked(p)) { stopAll(); return; }
+  if (was !== 'student' && p.role === 'student') {
+    startMember();
+    toast('You’ve been accepted — welcome to EmptyHands!');
+    drawHome(); drawMenu();
+  }
+}
+
+// Accepted students get notices and their chat with the coaches.
+function startMember() {
+  if (state.member) return;
+  state.member = true;
+  const uid = state.user.uid;
+  state.stops.push(api.watchNotifications(onNotices));
+  state.stops.push(api.watchThread(uid, onThread));
+  state.stops.push(api.watchChat(uid, c => { state.chat = c; drawBadge(); }));
+}
+
 function myNotices() { return state.notices.filter(n => noticeIsFor(n, state.profile)); }
+function coachMessages() { return state.thread.filter(m => m.from === 'coach'); }
+
+// Pop a toast (and a system notification if allowed) for things that arrive while the app is open.
+function announce(id, title, body) {
+  if (state.seen.has(id)) return;
+  state.seen.add(id);
+  toast(title);
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try { new Notification(title, { body, icon: 'icon-192.png', tag: id }); } catch { /* not allowed in this context */ }
+  }
+}
 
 function onNotices(list) {
-  const first = state.seen.size === 0 && state.notices.length === 0;
+  const first = !state.loadedNotices;
+  state.loadedNotices = true;
   state.notices = list;
-  const mine = myNotices();
-  // Pop a system notification for anything new that arrived while the app is open.
-  if (!first) {
-    mine.filter(n => !state.seen.has(n.id) && n.createdAt > (state.profile.lastRead || 0)).forEach(n => {
-      toast('New notice: ' + n.title);
-      if ('Notification' in window && Notification.permission === 'granted') {
-        try { new Notification(n.title, { body: n.body, icon: 'icon-192.png', tag: n.id }); } catch { /* not allowed in this context */ }
-      }
-    });
-  }
-  mine.forEach(n => state.seen.add(n.id));
-  if (state.view === 'notices' && !document.hidden) markRead();
-  drawNotices();
+  myNotices().forEach(n => {
+    if (first) state.seen.add(n.id);
+    else if (n.createdAt > (state.profile.lastRead || 0)) announce(n.id, 'New notice: ' + n.title, n.body);
+  });
+  refresh();
+}
+
+function onThread(list) {
+  const first = !state.loadedThread;
+  state.loadedThread = true;
+  state.thread = list;
+  list.forEach(m => {
+    if (first || m.from !== 'coach') state.seen.add(m.id);
+    else announce(m.id, 'Message from ' + (m.author || 'your coach'), m.text);
+  });
+  refresh();
+}
+
+function refresh() {
+  if (state.view === 'menu' && !document.hidden) markRead();
+  drawMenu();
   drawHome();
   drawBadge();
 }
 
-function unread() { return myNotices().filter(n => n.createdAt > (state.profile.lastRead || 0)).length; }
+function unread() {
+  if (!state.member) return 0;
+  const notices = myNotices().filter(n => n.createdAt > (state.profile.lastRead || 0)).length;
+  const seenChat = (state.chat && state.chat.studentReadAt) || 0;
+  return notices + coachMessages().filter(m => m.createdAt > seenChat).length;
+}
 function drawBadge() {
   const n = unread();
   $('#badge').hidden = !n;
@@ -198,30 +266,80 @@ function drawBadge() {
   document.title = (n ? `(${n}) ` : '') + 'EmptyHands · Student app';
 }
 async function markRead() {
-  if (!state.profile || !unread()) return;
-  const newest = Math.max(...myNotices().map(n => n.createdAt));
-  state.prevRead = state.profile.lastRead || 0;
-  state.profile.lastRead = newest;
+  if (!state.member || !unread()) return;
+  const newest = Math.max(0, ...myNotices().map(n => n.createdAt));
+  state.prevRead = { notices: state.profile.lastRead || 0, chat: (state.chat && state.chat.studentReadAt) || 0 };
+  state.profile.lastRead = Math.max(newest, state.profile.lastRead || 0);
+  state.chat = { ...(state.chat || {}), studentReadAt: Date.now() };
   drawBadge();
-  try { await api.saveProfile(state.user.uid, { lastRead: newest }); } catch (e) { console.warn(e); }
+  try {
+    await api.saveProfile(state.user.uid, { lastRead: state.profile.lastRead });
+    await api.markChatRead(state.user.uid, 'student');
+  } catch (e) { console.warn(e); }
 }
 
+// Coach notices, shown in bold in the menu and on the home screen.
 function noticeHTML(n, isNew) {
-  return `<article class="notice${isNew ? ' is-new' : ''}">
-    <header><span class="aud">${esc(AUDIENCES[n.audience] || 'Everyone')}</span><time>${timeAgo(n.createdAt)}</time></header>
+  return `<article class="notice notice--coach${isNew ? ' is-new' : ''}">
+    <header><span class="aud">Notice · ${esc(AUDIENCES[n.audience] || 'Everyone')}</span><time>${timeAgo(n.createdAt)}</time></header>
     <h3>${esc(n.title)}</h3>
     <p>${esc(n.body).replace(/\n/g, '<br>')}</p>
     ${n.from ? `<footer>— ${esc(n.from)}</footer>` : ''}
   </article>`;
 }
-function drawNotices() {
-  const mine = myNotices();
-  const since = state.view === 'notices' ? state.prevRead ?? state.profile.lastRead : state.profile.lastRead;
-  $('#notice-list').innerHTML = mine.length
-    ? mine.map(n => noticeHTML(n, n.createdAt > (since || 0))).join('')
-    : '<div class="empty"><span aria-hidden="true">便</span><p>No notices yet. When your coaches send one, it will appear here.</p></div>';
+
+// ---- EmptyHands menu ----
+function fillSender() {
+  const p = state.profile;
+  const sel = $('#chat-from');
+  const opts = [p.name, ...(p.guardian ? [p.guardian + ' (parent)'] : [])];
+  sel.innerHTML = opts.map(o => `<option>${esc(o)}</option>`).join('');
+  $('#chat-from-wrap').hidden = opts.length < 2;
 }
 
+function drawMenu() {
+  if (!state.profile) return;
+  const pending = state.profile.role !== 'student';
+  $('#menu-pending').hidden = !pending;
+  $('#menu-chat').hidden = pending;
+  if (pending) return;
+  const since = state.prevRead || { notices: state.profile.lastRead || 0, chat: (state.chat && state.chat.studentReadAt) || 0 };
+  const items = [
+    ...myNotices().map(n => ({ at: n.createdAt, html: noticeHTML(n, n.createdAt > since.notices) })),
+    ...state.thread.map(m => ({ at: m.createdAt, html: messageHTML(m, m.from === 'student') })),
+  ].sort((a, b) => a.at - b.at);
+  const feed = $('#menu-feed');
+  const atBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 60;
+  feed.innerHTML = items.length
+    ? items.map(i => i.html).join('')
+    : '<div class="empty"><span aria-hidden="true">便</span><p>Nothing here yet. Notices from your coaches will appear here, and you can send them a message below.</p></div>';
+  if (atBottom) scrollFeed();
+}
+function scrollFeed() {
+  requestAnimationFrame(() => {
+    const feed = $('#menu-feed');
+    feed.scrollTop = feed.scrollHeight;
+    if (state.view === 'menu') scrollTo(0, document.body.scrollHeight);
+  });
+}
+
+const chatText = $('#chat-text');
+chatText.addEventListener('input', () => { chatText.style.height = 'auto'; chatText.style.height = Math.min(chatText.scrollHeight, 160) + 'px'; });
+chatText.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !NATIVE && matchMedia('(pointer: fine)').matches) { e.preventDefault(); $('#form-chat').requestSubmit(); } });
+$('#form-chat').addEventListener('submit', async e => {
+  e.preventDefault();
+  const text = chatText.value.trim();
+  if (!text || !state.member) return;
+  await busy(e.target.querySelector('[type=submit]'), async () => {
+    try {
+      await api.sendMessage(state.user.uid, state.profile.name, { text, from: 'student', author: $('#chat-from').value, uid: state.user.uid });
+      chatText.value = ''; chatText.style.height = 'auto';
+      scrollFeed();
+    } catch (err) { toast(errorText(err), 'bad'); }
+  });
+});
+
+// ---- home ----
 function drawHome() {
   if (!state.profile) return;
   const p = state.profile;
@@ -243,10 +361,16 @@ function drawHome() {
     ? next.map(d => `<li><span class="swatch t-${d.type || 'note'}"></span><div><b>${d.type ? TYPES[d.type].label : 'Note'}</b><small>${esc(d.note || '')}</small></div><time>${shortDate(d.key)}<small>${whenText(d.key)}</small></time></li>`).join('')
     : '<li class="muted">Nothing coming up.</li>';
 
-  const mine = myNotices().slice(0, 2);
-  $('#home-notices').innerHTML = mine.length
-    ? mine.map(n => noticeHTML(n, n.createdAt > (p.lastRead || 0))).join('')
-    : '<p class="muted">No notices yet.</p>';
+  if (p.role !== 'student') {
+    $('#home-notices').innerHTML = '<div class="card pending-mini"><b>Waiting for a coach to accept you.</b> Notices and messages from your coaches will show here once you’re accepted.</div>';
+    return;
+  }
+  const since = (state.chat && state.chat.studentReadAt) || 0;
+  const latest = [
+    ...myNotices().map(n => ({ at: n.createdAt, html: noticeHTML(n, n.createdAt > (p.lastRead || 0)) })),
+    ...coachMessages().map(m => ({ at: m.createdAt, html: messageHTML(m, false).replace('class="msg ', `class="msg${m.createdAt > since ? ' is-new' : ''} `) })),
+  ].sort((a, b) => b.at - a.at).slice(0, 2);
+  $('#home-notices').innerHTML = latest.length ? latest.map(i => i.html).join('') : '<p class="muted">Nothing from your coaches yet.</p>';
 }
 
 // ---- calendar ----
@@ -258,6 +382,7 @@ async function drawCalendar(scroll) {
   $('#cal-year-select').innerHTML = [...new Set([...years, state.year])].sort().map(y => `<option${y === state.year ? ' selected' : ''}>${y}</option>`).join('');
   $('#cal-empty').hidden = !!cal;
   $('#cal-grid').hidden = !cal;
+  $('#cal-keydates').hidden = !cal;
   $('#cal-timings').hidden = !(cal && cal.timings && cal.timings.length);
   $('#ics').hidden = !cal;
   $('#cal-pdf').hidden = !(cal && cal.pdf);
@@ -266,6 +391,7 @@ async function drawCalendar(scroll) {
   renderYear($('#cal-grid'), state.year, {
     days: cal.days, profile: state.profile, onlyMine: $('#only-mine').checked, onDay: openDay,
   });
+  drawKeyDates(cal.days);
   $('#cal-timings').innerHTML = '<h2>Class times</h2><ul>' + cal.timings.map(t => {
     const head = /^[A-Z][A-Z ]+(\(|—|$)/.test(t);
     return `<li${head ? ' class="th"' : ''}>${esc(t)}</li>`;
@@ -275,6 +401,25 @@ async function drawCalendar(scroll) {
     if (m) requestAnimationFrame(() => m.scrollIntoView({ block: 'start' }));
   }
 }
+
+// The year's days off and key dates as lists, below the month grid.
+function drawKeyDates(days) {
+  const today = todayKey();
+  const groups = [
+    ['closed', 'Days off — dojo closed'],
+    ['grading', 'Gradings & workshops'],
+    ['blackbelt', 'Black belt classes'],
+  ].filter(([t]) => isRelevant(t, state.profile) || !$('#only-mine').checked);
+  const notes = Object.entries(days).filter(([, v]) => v.note && v.type === 'training');
+  const li = ([k, v]) => `<li class="${k < today ? 'is-past' : ''}"><time>${shortDate(k)}</time><span>${esc(v.note || '')}</span>${k >= today ? `<small>${whenText(k)}</small>` : ''}</li>`;
+  const sorted = list => list.sort(([a], [b]) => a.localeCompare(b));
+  $('#cal-keydates').innerHTML = groups.map(([t, title]) => {
+    const list = sorted(Object.entries(days).filter(([k, v]) => v.type === t && k.startsWith(state.year + '-')));
+    return `<section class="card keydates-group"><h2><span class="swatch t-${t}"></span>${title} <small>${list.length}</small></h2>
+      ${list.length ? `<ul>${list.map(li).join('')}</ul>` : '<p class="muted fine">None this year.</p>'}</section>`;
+  }).join('') + (notes.length ? `<section class="card keydates-group"><h2><span class="swatch t-note"></span>Notes on class days</h2><ul>${sorted(notes).map(li).join('')}</ul></section>` : '');
+}
+
 $('#only-mine').addEventListener('change', () => drawCalendar());
 $('#cal-year-select').addEventListener('change', async e => {
   state.year = +e.target.value;
@@ -314,7 +459,8 @@ $('#form-profile').addEventListener('submit', async e => {
       await api.saveProfile(state.user.uid, p);
       Object.assign(state.profile, p);
       $('#top-user').textContent = p.name.split(' ')[0];
-      drawHome(); drawNotices(); drawBadge();
+      fillSender();
+      drawHome(); drawMenu(); drawBadge();
       toast('Profile saved');
     } catch (err) { showError(form, errorText(err)); }
   });
@@ -353,7 +499,7 @@ async function turnOnPush(quiet) {
       if (state.user) await api.addPushToken(state.user.uid, t);
       state.pushToken = t;
     });
-    if (!quiet) toast(token ? 'Notifications on — we’ll let you know when your coaches send a notice.' : 'Notifications are off. You can turn them on in your phone’s Settings.');
+    if (!quiet) toast(token ? 'Notifications on — we’ll let you know when your coaches send a notice or message.' : 'Notifications are off. You can turn them on in your phone’s Settings.');
   } catch (err) { console.warn(err); if (!quiet) toast('Couldn’t turn on notifications. Please try again.', 'bad'); }
   alertsButton();
 }
@@ -362,14 +508,14 @@ async function alertsButton() {
   if (NATIVE) { btn.hidden = DEMO || (await pushState()) === 'granted'; return; }
   btn.hidden = !('Notification' in window) || Notification.permission !== 'default';
 }
-onPushTap(() => { if (state.profile) show('notices'); });
+onPushTap(() => { if (state.profile) show('menu'); });
 $('#enable-alerts').addEventListener('click', async () => {
   if (NATIVE) return turnOnPush(false);
   const r = await Notification.requestPermission();
-  toast(r === 'granted' ? 'Alerts on — you’ll get a pop-up for new notices while the app is open.' : 'Alerts are off. You can change this in your browser settings.');
+  toast(r === 'granted' ? 'Alerts on — you’ll get a pop-up for new notices and messages while the app is open.' : 'Alerts are off. You can change this in your browser settings.');
   alertsButton();
 });
-document.addEventListener('visibilitychange', () => { if (!document.hidden && state.view === 'notices') markRead(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden && state.view === 'menu') markRead(); });
 
 // ---- start ----
 (async () => {
