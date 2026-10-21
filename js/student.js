@@ -207,6 +207,8 @@ function onProfile(p) {
   state.profile = { ...state.profile, ...p };
   if (blocked(p)) { stopAll(); return; }
   fillProfile($('#form-profile'), state.profile);
+  if (state.view === 'pay' && !!p.feesExempt !== !!state.wasExempt) drawPay();
+  state.wasExempt = !!p.feesExempt;
   if (p.grade && oldBelt && p.grade !== oldBelt) {
     toast('Sensei has updated your belt to ' + (GRADES[p.grade] || p.grade) + (p.grade === 'dan' ? ' — congratulations!' : '.'));
     drawHome(); drawCalendar(); drawHomework(); drawMenu();
@@ -406,6 +408,11 @@ async function drawPay() {
   const paypal = settings && settings.paypal;
   const track = PAYPAL_AUTO_TRACK && { uid: state.user.uid, notifyUrl: `https://europe-west2-${firebaseConfig.projectId}.cloudfunctions.net/paypalIpn` };
   drawPayStatus();
+  if (p.feesExempt) {
+    $('#pay-intro').innerHTML = `<b>${esc(p.name)} doesn’t need to pay fees.</b> Sensei has marked this account as exempt. If you think that’s wrong, please ask Sensei.`;
+    $('#fee-list').innerHTML = '';
+    return;
+  }
   const level = feeLevel(p.grade);
   // Students can only pay their own monthly fee (for Karate, the one for their belt level) and
   // drop-in / pay-per-lesson fees, for the classes they attend. Other fees stay in the coach panel.
@@ -492,6 +499,7 @@ function drawHome() {
   const p = state.profile;
   const hour = new Date().getHours();
   $('#home-date').textContent = longDate(todayKey());
+  $('.pay-cta').hidden = !!p.feesExempt;
   $('#home-greeting').textContent = (hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening') + ', ' + p.name.split(' ')[0] + '.';
 
   const days = (state.cal && state.cal.days) || {};
