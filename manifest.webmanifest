@@ -1,7 +1,7 @@
 {
   "name": "EmptyHands Student",
   "short_name": "EmptyHands",
-  "description": "Your EmptyHands dojo calendar, key dates and notices from your coaches.",
+  "description": "Your EmptyHands dojo calendar, key dates, homework and messages from Sensei.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",

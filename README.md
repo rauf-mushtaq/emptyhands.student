@@ -10,7 +10,9 @@ The app for EmptyHands KaraTe School students: an account, the year's dojo calen
 - **Home**: next class with a countdown, a warning if the dojo is closed before then, upcoming key dates and the latest notices.
 - **Calendar**: the full year in the printed calendar's colours (training, closed, black-belt classes, gradings), filtered to what's relevant to them. Tap a date for details, or add the dates to their phone's calendar.
 - **Join request**: a new account waits until a coach accepts it in the coach panel. Until then the calendar and key dates still work.
-- **EmptyHands menu** (once accepted): coach notices and a private chat between the student/family and the coaches. Coach notices and messages show in bold; students or parents can message the coaches. A badge shows anything new.
+- **EmptyHands menu** (once accepted), with four channels: **Notices** (only Sensei can post), **Group chat** (everyone), **Training journal** (students share what they practised) and **Message Sensei** (private). Sensei's posts show in bold. A **Recommended channel** card links to the Shotokan Karate Academy YouTube channel; set its address in `js/config.js` (`RECOMMENDED`).
+- **Homework** set by Sensei, for everyone, a group or one student. Students tick it off; Sensei sees who has.
+- **Syllabus**: the 10th Kyu to Shodan summary sheet (`assets/syllabus/`, rendered from `assets/docs/EmptyHands-Syllabus.pdf`).
 - **Key dates & days off** listed under the calendar: closures, gradings, black-belt classes and any notes.
 - **Profile**: edit details, sign out or delete the account.
 

@@ -1,15 +1,16 @@
 import { backend, DEMO, isCoach, errorText } from './backend.js';
-import { COACH_URL } from './config.js';
+import { COACH_URL, RECOMMENDED } from './config.js';
 import { NATIVE, pushState, enablePush, onPushTap, shareFile } from './native.js';
 import {
   $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar, messageHTML,
-  calendarYears, isRelevant, noticeIsFor, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
+  calendarYears, isRelevant, noticeIsFor, homeworkIsFor, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
   toast, busy, registerSW,
 } from './common.js';
 
-const VIEWS = ['home', 'calendar', 'menu', 'profile'];
+const VIEWS = ['home', 'calendar', 'menu', 'homework', 'syllabus', 'profile'];
 const state = {
   user: null, profile: null, notices: [], thread: [], chat: null, cal: null,
+  group: [], journal: [], homework: [], channel: 'notices',
   year: new Date().getFullYear(), view: 'home', stops: [], member: false, seen: new Set(),
 };
 let api;
@@ -53,7 +54,9 @@ function show(id) {
   document.body.classList.toggle('has-tabbar', signedIn);
   $$('#tabbar button').forEach(b => b.toggleAttribute('aria-current', b.dataset.go === id));
   if (signedIn) state.view = id;
+  $('#top-user').toggleAttribute('aria-current', id === 'profile');
   if (id === 'menu') { drawMenu(); markRead(); scrollFeed(); } else scrollTo(0, 0);
+  if (id === 'homework') drawHomework();
   if (id === 'calendar') drawCalendar(true);
 }
 document.addEventListener('click', e => {
@@ -102,7 +105,7 @@ $('#form-signup').addEventListener('submit', async e => {
   });
 });
 
-// New accounts start as a join request; a coach accepts or declines it in the coach panel.
+// New accounts start as a join request; Sensei accepts or declines it in the coach panel.
 async function createProfile(user, p) {
   state.user = user;
   state.needsProfile = null;
@@ -120,7 +123,8 @@ function stopAll() {
   state.stops = [];
   state.member = false;
   state.notices = []; state.thread = []; state.chat = null; state.seen = new Set();
-  state.loadedNotices = state.loadedThread = false; state.prevRead = null;
+  state.group = []; state.journal = []; state.homework = [];
+  state.loaded = {}; state.prevRead = null;
 }
 
 async function onAuth(user) {
@@ -131,7 +135,7 @@ async function onAuth(user) {
   try { state.profile = await api.getProfile(user.uid); } catch (err) { toast(errorText(err), 'bad'); }
   if (blocked(state.profile)) return;
   if (!state.profile && await isCoach(user)) {
-    return message('You’re signed in as a coach', `<b>${esc(user.email)}</b> is a coach account. Open the <a href="${COACH_URL}" target="_blank" rel="noopener">coach panel</a>, or sign out to use the student app.`);
+    return message('You’re signed in as Sensei', `<b>${esc(user.email)}</b> is a Sensei account. Open the <a href="${COACH_URL}" target="_blank" rel="noopener">Sensei panel</a>, or sign out to use the student app.`);
   }
   if (!state.profile) {
     // Signed in but no profile (e.g. sign-up interrupted): ask for details again.
@@ -150,7 +154,7 @@ async function onAuth(user) {
 const CONTACT = 'please contact us on 07931 300470 or <a href="mailto:info@emptyhands.co.uk">info@emptyhands.co.uk</a>';
 function blocked(p) {
   if (p && p.role === 'removed') { message('Your account is paused', 'The dojo has removed this account from the student list. If you think this is a mistake, ' + CONTACT + '.'); return true; }
-  if (p && p.role === 'declined') { message('Your request wasn’t accepted', 'A coach couldn’t match this account to a student at EmptyHands. If you think this is a mistake, ' + CONTACT + '.'); return true; }
+  if (p && p.role === 'declined') { message('Your request wasn’t accepted', 'Sensei couldn’t match this account to a student at EmptyHands. If you think this is a mistake, ' + CONTACT + '.'); return true; }
   return false;
 }
 
@@ -179,7 +183,7 @@ async function enter(user) {
   fillProfile($('#form-profile'), p);
   fillSender();
   $('#profile-email').textContent = 'Signed in as ' + user.email;
-  // Live profile: notices when a coach accepts, removes or declines this account.
+  // Live profile: notices when Sensei accepts, removes or declines this account.
   state.stops.push(api.watchProfile(user.uid, onProfile));
   if (p.role === 'student') startMember();
   const start = location.hash.slice(1);
@@ -197,22 +201,27 @@ function onProfile(p) {
   if (was !== 'student' && p.role === 'student') {
     startMember();
     toast('You’ve been accepted — welcome to EmptyHands!');
-    drawHome(); drawMenu();
+    drawHome(); drawMenu(); drawHomework();
   }
 }
 
-// Accepted students get notices and their chat with the coaches.
+// Accepted students get Sensei's notices, the shared channels, private messages and homework.
 function startMember() {
   if (state.member) return;
   state.member = true;
   const uid = state.user.uid;
-  state.stops.push(api.watchNotifications(onNotices));
-  state.stops.push(api.watchThread(uid, onThread));
+  state.stops.push(api.watchNotifications(list => onList('notices', list)));
+  state.stops.push(api.watchThread(uid, list => onList('thread', list)));
+  state.stops.push(api.watchChannel('group', list => onList('group', list)));
+  state.stops.push(api.watchChannel('journal', list => onList('journal', list)));
+  state.stops.push(api.watchHomework(list => onList('homework', list)));
   state.stops.push(api.watchChat(uid, c => { state.chat = c; drawBadge(); }));
 }
 
 function myNotices() { return state.notices.filter(n => noticeIsFor(n, state.profile)); }
 function coachMessages() { return state.thread.filter(m => m.from === 'coach'); }
+function myHomework() { return state.homework.filter(h => homeworkIsFor(h, state.user.uid, state.profile)); }
+const isDone = h => !!(state.profile.homeworkDone || {})[h.id];
 
 // Pop a toast (and a system notification if allowed) for things that arrive while the app is open.
 function announce(id, title, body) {
@@ -224,25 +233,15 @@ function announce(id, title, body) {
   }
 }
 
-function onNotices(list) {
-  const first = !state.loadedNotices;
-  state.loadedNotices = true;
-  state.notices = list;
-  myNotices().forEach(n => {
-    if (first) state.seen.add(n.id);
-    else if (n.createdAt > (state.profile.lastRead || 0)) announce(n.id, 'New notice: ' + n.title, n.body);
-  });
-  refresh();
-}
-
-function onThread(list) {
-  const first = !state.loadedThread;
-  state.loadedThread = true;
-  state.thread = list;
-  list.forEach(m => {
-    if (first || m.from !== 'coach') state.seen.add(m.id);
-    else announce(m.id, 'Message from ' + (m.author || 'your coach'), m.text);
-  });
+// Everything that's announced when it arrives: notices, Sensei's private messages and new homework.
+function onList(kind, list) {
+  const first = !state.loaded[kind];
+  state.loaded[kind] = true;
+  state[kind] = list;
+  const fresh = item => !first && !state.seen.has(item.id);
+  if (kind === 'notices') myNotices().forEach(n => fresh(n) && n.createdAt > (state.profile.lastRead || 0) ? announce(n.id, 'New notice from Sensei: ' + n.title, n.body) : state.seen.add(n.id));
+  else if (kind === 'thread') list.forEach(m => fresh(m) && m.from === 'coach' ? announce(m.id, 'Message from ' + (m.author || 'Sensei'), m.text) : state.seen.add(m.id));
+  else if (kind === 'homework') myHomework().forEach(h => fresh(h) ? announce(h.id, 'New homework: ' + h.title, h.details || '') : state.seen.add(h.id));
   refresh();
 }
 
@@ -250,35 +249,54 @@ function refresh() {
   if (state.view === 'menu' && !document.hidden) markRead();
   drawMenu();
   drawHome();
+  drawHomework();
   drawBadge();
 }
 
-function unread() {
+// Unread counts per channel. Group chat and journal only show a dot; the Menu badge counts
+// Sensei's notices and private messages.
+const seenAt = ch => ((state.profile.seen || {})[ch]) || 0;
+function unreadIn(ch) {
   if (!state.member) return 0;
-  const notices = myNotices().filter(n => n.createdAt > (state.profile.lastRead || 0)).length;
-  const seenChat = (state.chat && state.chat.studentReadAt) || 0;
-  return notices + coachMessages().filter(m => m.createdAt > seenChat).length;
+  if (ch === 'notices') return myNotices().filter(n => n.createdAt > (state.profile.lastRead || 0)).length;
+  if (ch === 'sensei') return coachMessages().filter(m => m.createdAt > ((state.chat && state.chat.studentReadAt) || 0)).length;
+  return state[ch].filter(m => m.uid !== state.user.uid && m.createdAt > seenAt(ch)).length;
 }
+function unread() { return unreadIn('notices') + unreadIn('sensei'); }
 function drawBadge() {
   const n = unread();
   $('#badge').hidden = !n;
   $('#badge').textContent = n > 9 ? '9+' : n;
+  $$('.channels [data-ch]').forEach(b => { $('.dot', b).hidden = b.dataset.ch === state.channel || !unreadIn(b.dataset.ch); });
+  const todo = state.member ? myHomework().filter(h => !isDone(h)).length : 0;
+  $('#hw-badge').hidden = !todo;
+  $('#hw-badge').textContent = todo > 9 ? '9+' : todo;
   document.title = (n ? `(${n}) ` : '') + 'EmptyHands · Student app';
 }
+// Marks the open channel as read.
 async function markRead() {
-  if (!state.member || !unread()) return;
-  const newest = Math.max(0, ...myNotices().map(n => n.createdAt));
-  state.prevRead = { notices: state.profile.lastRead || 0, chat: (state.chat && state.chat.studentReadAt) || 0 };
-  state.profile.lastRead = Math.max(newest, state.profile.lastRead || 0);
-  state.chat = { ...(state.chat || {}), studentReadAt: Date.now() };
-  drawBadge();
+  const ch = state.channel;
+  if (!state.member || !unreadIn(ch)) return;
+  const uid = state.user.uid;
+  state.prevRead = { ch, at: ch === 'notices' ? state.profile.lastRead || 0 : ch === 'sensei' ? (state.chat && state.chat.studentReadAt) || 0 : seenAt(ch) };
   try {
-    await api.saveProfile(state.user.uid, { lastRead: state.profile.lastRead });
-    await api.markChatRead(state.user.uid, 'student');
+    if (ch === 'notices') {
+      state.profile.lastRead = Math.max(0, ...myNotices().map(n => n.createdAt));
+      drawBadge();
+      await api.saveProfile(uid, { lastRead: state.profile.lastRead });
+    } else if (ch === 'sensei') {
+      state.chat = { ...(state.chat || {}), studentReadAt: Date.now() };
+      drawBadge();
+      await api.markChatRead(uid, 'student');
+    } else {
+      state.profile.seen = { ...(state.profile.seen || {}), [ch]: Date.now() };
+      drawBadge();
+      await api.saveProfile(uid, { seen: state.profile.seen });
+    }
   } catch (e) { console.warn(e); }
 }
 
-// Coach notices, shown in bold in the menu and on the home screen.
+// Sensei's notices, shown in bold in the menu and on the home screen.
 function noticeHTML(n, isNew) {
   return `<article class="notice notice--coach${isNew ? ' is-new' : ''}">
     <header><span class="aud">Notice · ${esc(AUDIENCES[n.audience] || 'Everyone')}</span><time>${timeAgo(n.createdAt)}</time></header>
@@ -289,6 +307,24 @@ function noticeHTML(n, isNew) {
 }
 
 // ---- EmptyHands menu ----
+const CHANNELS = {
+  notices: { intro: 'Notices from Sensei. Only Sensei can post here.' },
+  group: { intro: 'Group chat for everyone at EmptyHands — students, parents and Sensei. Everyone in the group can see these messages.', placeholder: 'Message the group…' },
+  journal: { intro: 'Your training journal: share what you practised, so Sensei and the group can see how you’re getting on.', placeholder: 'What did you practise today? e.g. Heian Shodan ×5, kihon 20 min' },
+  sensei: { intro: 'Private messages between you and Sensei. Nobody else can see these.', placeholder: 'Message Sensei…' },
+};
+$('#rec-name').textContent = RECOMMENDED.name;
+$('#rec-about').textContent = RECOMMENDED.about;
+$('#rec-link').href = RECOMMENDED.url;
+
+$('.channels').addEventListener('click', e => {
+  const b = e.target.closest('[data-ch]');
+  if (!b) return;
+  state.channel = b.dataset.ch;
+  state.prevRead = null;
+  drawMenu(); markRead(); scrollFeed();
+});
+
 function fillSender() {
   const p = state.profile;
   const sel = $('#chat-from');
@@ -303,25 +339,30 @@ function drawMenu() {
   $('#menu-pending').hidden = !pending;
   $('#menu-chat').hidden = pending;
   if (pending) return;
-  const since = state.prevRead || { notices: state.profile.lastRead || 0, chat: (state.chat && state.chat.studentReadAt) || 0 };
-  const items = [
-    ...myNotices().map(n => ({ at: n.createdAt, html: noticeHTML(n, n.createdAt > since.notices) })),
-    ...state.thread.map(m => ({ at: m.createdAt, html: messageHTML(m, m.from === 'student') })),
-  ].sort((a, b) => a.at - b.at);
+  const ch = state.channel;
+  $$('.channels [data-ch]').forEach(b => b.setAttribute('aria-selected', b.dataset.ch === ch));
+  $('#ch-intro').textContent = CHANNELS[ch].intro;
+  $('#form-chat').hidden = ch === 'notices';
+  $('#chat-text').placeholder = CHANNELS[ch].placeholder || '';
+  const since = state.prevRead && state.prevRead.ch === ch ? state.prevRead.at : null;
+  const isNew = at => since !== null && at > since;
+  let html;
+  if (ch === 'notices') html = myNotices().slice().reverse().map(n => noticeHTML(n, isNew(n.createdAt) || n.createdAt > (state.profile.lastRead || 0)));
+  else if (ch === 'sensei') html = state.thread.map(m => messageHTML(m, m.from === 'student'));
+  else html = state[ch].map(m => messageHTML(m, m.uid === state.user.uid, m.uid === state.user.uid));
+  const empty = { notices: 'No notices yet. When Sensei sends one, it will appear here.', group: 'No messages yet — say hello to everyone!', journal: 'Nothing logged yet. After you train, share what you practised.', sensei: 'No messages yet. You can message Sensei privately here.' }[ch];
   const feed = $('#menu-feed');
-  const atBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 60;
-  feed.innerHTML = items.length
-    ? items.map(i => i.html).join('')
-    : '<div class="empty"><span aria-hidden="true">便</span><p>Nothing here yet. Notices from your coaches will appear here, and you can send them a message below.</p></div>';
-  if (atBottom) scrollFeed();
+  feed.innerHTML = html.length ? html.join('') : `<div class="empty"><span aria-hidden="true">便</span><p>${empty}</p></div>`;
+  drawBadge();
 }
 function scrollFeed() {
-  requestAnimationFrame(() => {
-    const feed = $('#menu-feed');
-    feed.scrollTop = feed.scrollHeight;
-    if (state.view === 'menu') scrollTo(0, document.body.scrollHeight);
-  });
+  requestAnimationFrame(() => { if (state.view === 'menu' && state.channel !== 'notices') scrollTo(0, document.body.scrollHeight); });
 }
+$('#menu-feed').addEventListener('click', async e => {
+  const b = e.target.closest('[data-delmsg]');
+  if (!b || !confirm('Delete your message?')) return;
+  try { await api.deleteChannelMessage(state.channel, b.dataset.delmsg); } catch (err) { toast(errorText(err), 'bad'); }
+});
 
 const chatText = $('#chat-text');
 chatText.addEventListener('input', () => { chatText.style.height = 'auto'; chatText.style.height = Math.min(chatText.scrollHeight, 160) + 'px'; });
@@ -329,14 +370,50 @@ chatText.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey
 $('#form-chat').addEventListener('submit', async e => {
   e.preventDefault();
   const text = chatText.value.trim();
-  if (!text || !state.member) return;
+  const ch = state.channel;
+  if (!text || !state.member || ch === 'notices') return;
+  const m = { text, from: 'student', author: $('#chat-from').value, uid: state.user.uid };
   await busy(e.target.querySelector('[type=submit]'), async () => {
     try {
-      await api.sendMessage(state.user.uid, state.profile.name, { text, from: 'student', author: $('#chat-from').value, uid: state.user.uid });
+      if (ch === 'sensei') await api.sendMessage(state.user.uid, state.profile.name, m);
+      else await api.postChannel(ch, m);
       chatText.value = ''; chatText.style.height = 'auto';
       scrollFeed();
     } catch (err) { toast(errorText(err), 'bad'); }
   });
+});
+
+// ---- homework ----
+function drawHomework() {
+  if (!state.profile) return;
+  const pending = state.profile.role !== 'student';
+  $('#hw-pending').hidden = !pending;
+  if (pending) { $('#hw-list').innerHTML = ''; $('#hw-summary').textContent = ''; return; }
+  const list = myHomework().sort((a, b) => isDone(a) - isDone(b) || (a.due || '9').localeCompare(b.due || '9') || b.createdAt - a.createdAt);
+  const todo = list.filter(h => !isDone(h)).length;
+  $('#hw-summary').textContent = list.length ? (todo ? `${todo} to do · ${list.length - todo} done` : 'All done — well done!') : '';
+  const today = todayKey();
+  $('#hw-list').innerHTML = list.length ? list.map(h => `
+    <label class="card hw${isDone(h) ? ' is-done' : ''}${!isDone(h) && h.due && h.due < today ? ' is-late' : ''}">
+      <input type="checkbox" data-hw="${esc(h.id)}"${isDone(h) ? ' checked' : ''}>
+      <span class="hw-tick" aria-hidden="true"></span>
+      <span class="hw-body">
+        <b>${esc(h.title)}</b>
+        ${h.details ? `<span class="hw-details">${esc(h.details).replace(/\n/g, '<br>')}</span>` : ''}
+        <small>${h.due ? 'Due ' + shortDate(h.due) + ' · ' : ''}${h.student ? 'Just for you' : esc(AUDIENCES[h.audience] || 'Everyone')}${h.from ? ' · ' + esc(h.from) : ''}</small>
+      </span>
+    </label>`).join('') : '<div class="empty"><span aria-hidden="true">宿</span><p>No homework yet. When Sensei sets some, it will appear here for you to tick off.</p></div>';
+}
+$('#hw-list').addEventListener('change', async e => {
+  const box = e.target.closest('[data-hw]');
+  if (!box) return;
+  const id = box.dataset.hw;
+  const done = box.checked;
+  state.profile.homeworkDone = { ...(state.profile.homeworkDone || {}) };
+  if (done) state.profile.homeworkDone[id] = Date.now(); else delete state.profile.homeworkDone[id];
+  drawHomework(); drawBadge();
+  if (done) toast('Nice work! Marked as done.');
+  try { await api.setHomeworkDone(state.user.uid, id, done); } catch (err) { toast(errorText(err), 'bad'); }
 });
 
 // ---- home ----
@@ -362,7 +439,7 @@ function drawHome() {
     : '<li class="muted">Nothing coming up.</li>';
 
   if (p.role !== 'student') {
-    $('#home-notices').innerHTML = '<div class="card pending-mini"><b>Waiting for a coach to accept you.</b> Notices and messages from your coaches will show here once you’re accepted.</div>';
+    $('#home-notices').innerHTML = '<div class="card pending-mini"><b>Waiting for Sensei to accept you.</b> Notices and messages from Sensei will show here once you’re accepted.</div>';
     return;
   }
   const since = (state.chat && state.chat.studentReadAt) || 0;
@@ -370,7 +447,7 @@ function drawHome() {
     ...myNotices().map(n => ({ at: n.createdAt, html: noticeHTML(n, n.createdAt > (p.lastRead || 0)) })),
     ...coachMessages().map(m => ({ at: m.createdAt, html: messageHTML(m, false).replace('class="msg ', `class="msg${m.createdAt > since ? ' is-new' : ''} `) })),
   ].sort((a, b) => b.at - a.at).slice(0, 2);
-  $('#home-notices').innerHTML = latest.length ? latest.map(i => i.html).join('') : '<p class="muted">Nothing from your coaches yet.</p>';
+  $('#home-notices').innerHTML = latest.length ? latest.map(i => i.html).join('') : '<p class="muted">Nothing from Sensei yet.</p>';
 }
 
 // ---- calendar ----
@@ -499,7 +576,7 @@ async function turnOnPush(quiet) {
       if (state.user) await api.addPushToken(state.user.uid, t);
       state.pushToken = t;
     });
-    if (!quiet) toast(token ? 'Notifications on — we’ll let you know when your coaches send a notice or message.' : 'Notifications are off. You can turn them on in your phone’s Settings.');
+    if (!quiet) toast(token ? 'Notifications on — we’ll let you know when Sensei sends a notice, message or homework.' : 'Notifications are off. You can turn them on in your phone’s Settings.');
   } catch (err) { console.warn(err); if (!quiet) toast('Couldn’t turn on notifications. Please try again.', 'bad'); }
   alertsButton();
 }
