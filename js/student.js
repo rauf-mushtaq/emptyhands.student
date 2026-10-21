@@ -416,33 +416,35 @@ async function drawPay() {
   const level = feeLevel(p.grade);
   // Students can only pay their own monthly fee (for Karate, the one for their belt level) and
   // drop-in / pay-per-lesson fees, for the classes they attend. Other fees stay in the coach panel.
-  const shown = studentFees(fees, p);
-  const groups = Object.keys(FEE_GROUPS).filter(g => shown.some(f => f.group === g));
-  $('#pay-intro').innerHTML = !paypal
-    ? 'Online payment isn’t set up yet — please pay Sensei at the dojo for now.'
-    : shown.length
-      ? `<b>Tap a fee to pay it.</b> PayPal opens with the amount filled in — pay with a card or your PayPal account. Showing the monthly and drop-in fees for <b>${esc(p.name)}</b> (${esc(GRADES[p.grade] || 'No belt')}). For anything else, please ask Sensei.`
-      : 'There are no monthly or drop-in fees for your classes. Please ask Sensei how to pay.';
-  $('#fee-list').innerHTML = groups.map(g => `<section class="fee-group"><h2>${FEE_GROUPS[g]}</h2>
-    ${shown.filter(f => f.group === g).map(f => {
-      const yours = f.per === 'month' && !!f.level;
-      // The whole card is the payment link: one tap goes straight to PayPal with the amount filled in.
-      const inner = `<span class="fee-main"><b>${esc(f.name)}</b>${yours ? ' <span class="tag tag--seal">Your level</span>' : ''}<small>${esc(f.note || '')}</small></span>
-        <span class="fee-price"><b>${money(f.price)}</b>${f.per ? `<small>/ ${esc(f.per)}</small>` : ''}</span>`;
-      return paypal
-        ? `<a class="card fee fee--link${yours ? ' is-yours' : ''}" href="${esc(paypalLink(paypal, f, p.name, track, STUDENT_URL))}" target="_blank" rel="noopener"
-            aria-label="Pay ${money(f.price)} for ${esc(f.name)} with PayPal or card">${inner}<span class="btn btn--paypal btn--sm" aria-hidden="true">Pay ${money(f.price)}</span></a>`
-        : `<div class="card fee${yours ? ' is-yours' : ''}">${inner}</div>`;
-    }).join('')}</section>`).join('');
+  const levelName = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' }[level];
+  const classes = (p.disciplines || []).filter(g => FEE_GROUPS[g]);
+  $('#pay-intro').innerHTML = paypal
+    ? `<b>Choose per lesson or per month.</b> PayPal opens with the amount filled in — pay with a card or your PayPal account. Paying for <b>${esc(p.name)}</b> (${esc(GRADES[p.grade] || 'No belt')}).`
+    : 'Online payment isn’t set up yet — please pay Sensei at the dojo for now.';
+
+  // One card per class, with two choices: per lesson, and per month at the student's level.
+  const option = (f, label, sub) => !f ? '' : paypal
+    ? `<a class="fee-option" href="${esc(paypalLink(paypal, f, p.name, track, STUDENT_URL))}" target="_blank" rel="noopener"
+        aria-label="Pay ${money(f.price)} ${label.toLowerCase()} for ${esc(FEE_GROUPS[f.group])} with PayPal or card">
+        <span class="fee-option-label">${label}</span><b>${money(f.price)}</b><small>${esc(sub)}</small><span class="btn btn--paypal btn--sm">Pay ${money(f.price)}</span></a>`
+    : `<div class="fee-option"><span class="fee-option-label">${label}</span><b>${money(f.price)}</b><small>${esc(sub)}</small></div>`;
+  $('#fee-list').innerHTML = classes.map(g => {
+    const lesson = lessonFee(fees, g);
+    const month = monthFee(fees, g, level);
+    const monthly = level === 'application' && g === 'karate'
+      ? `<div class="fee-option is-application"><span class="fee-option-label">Per month</span><b>On application</b><small>Brown belt and above — please speak to Sensei about your monthly fee.</small></div>`
+      : option(month, 'Per month', month && month.level ? `${levelName} level` : 'Monthly');
+    if (!lesson && !monthly) return '';
+    return `<section class="card fee-class"><h2>${FEE_GROUPS[g]}</h2><div class="fee-options">${option(lesson, 'Per lesson', 'Pay as you go')}${monthly}</div></section>`;
+  }).join('') || '<p class="muted">There are no fees set up for your classes yet. Please ask Sensei how to pay.</p>';
 }
 
-// The fees a student may pay: monthly (their belt level's, if the fee has one) and drop-in.
+// The two fees a student chooses between for a class: per lesson, and per month (the one for
+// their belt level when the class has levels, as Karate does).
 const DROP_IN = ['class', 'lesson', 'session'];
-function studentFees(fees, p) {
-  const level = feeLevel(p.grade);
-  return fees.filter(f => (p.disciplines || []).includes(f.group))
-    .filter(f => DROP_IN.includes(f.per) || (f.per === 'month' && (!f.level || f.level === level)));
-}
+const lessonFee = (fees, g) => fees.find(f => f.group === g && DROP_IN.includes(f.per));
+const monthFee = (fees, g, level) => fees.find(f => f.group === g && f.per === 'month' && f.level === level)
+  || fees.find(f => f.group === g && f.per === 'month' && !f.level);
 
 // This month's fee status and the student's payment history.
 function drawPayStatus() {
