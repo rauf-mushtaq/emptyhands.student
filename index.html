@@ -72,6 +72,7 @@
     <p class="eyebrow" id="home-date"></p>
     <h1 class="greeting" id="home-greeting"></h1>
     <div class="card next-card" id="next-card"></div>
+    <button type="button" class="card pay-cta" data-go="pay"><span class="pay-cta-icon" aria-hidden="true">£</span><span><b>Pay fees</b><small>Monthly fees, membership and gradings with PayPal</small></span><span aria-hidden="true">→</span></button>
     <div class="home-grid">
       <div>
         <div class="card-head"><h2>Coming up for you</h2><button class="linkish" data-go="calendar">Full calendar →</button></div>
@@ -175,6 +176,16 @@
     </div>
   </section>
 
+  <!-- Pay fees with PayPal -->
+  <section class="view" id="view-pay" hidden>
+    <div class="view-head">
+      <div><p class="eyebrow">Fees</p><h1>Pay with PayPal</h1></div>
+    </div>
+    <p class="muted fine" id="pay-intro"></p>
+    <div class="fees" id="fee-list"></div>
+    <p class="muted fine">Payments go straight to EmptyHands through PayPal, with the student’s name attached so Sensei knows who has paid. You can pay with a PayPal account or a debit or credit card. Classes can’t be carried forward.</p>
+  </section>
+
   <!-- Profile -->
   <section class="view" id="view-profile" hidden>
     <p class="eyebrow">Your account</p>
@@ -187,6 +198,7 @@
     </form>
     <div class="row-actions">
       <button class="btn btn--ghost" data-signout>Sign out</button>
+      <button class="linkish" data-go="pay">Pay fees</button>
       <a class="linkish" href="privacy.html" target="_blank" rel="noopener">Privacy policy</a>
       <button class="linkish danger" id="delete-account">Delete my account</button>
     </div>

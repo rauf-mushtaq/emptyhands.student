@@ -4,10 +4,10 @@ import { NATIVE, pushState, enablePush, onPushTap, shareFile } from './native.js
 import {
   $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar, messageHTML,
   calendarYears, isRelevant, noticeIsFor, homeworkIsFor, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
-  toast, busy, registerSW,
+  toast, busy, registerSW, DEFAULT_FEES, FEE_GROUPS, FEE_LEVELS, feeLevel, money, paypalLink,
 } from './common.js';
 
-const VIEWS = ['home', 'calendar', 'menu', 'homework', 'syllabus', 'profile'];
+const VIEWS = ['home', 'calendar', 'menu', 'homework', 'syllabus', 'pay', 'profile'];
 const state = {
   user: null, profile: null, notices: [], thread: [], chat: null, cal: null,
   group: [], journal: [], homework: [], channel: 'notices',
@@ -61,6 +61,7 @@ function show(id) {
   $('#top-user').toggleAttribute('aria-current', id === 'profile');
   if (id === 'menu') { drawMenu(); markRead(); scrollFeed(); } else scrollTo(0, 0);
   if (id === 'homework') drawHomework();
+  if (id === 'pay') drawPay();
   if (id === 'calendar') drawCalendar(true);
 }
 document.addEventListener('click', e => {
@@ -392,6 +393,32 @@ $('#form-chat').addEventListener('submit', async e => {
     } catch (err) { toast(errorText(err), 'bad'); }
   });
 });
+
+// ---- pay fees with PayPal ----
+async function drawPay() {
+  const p = state.profile;
+  if (!p) return;
+  let settings = null;
+  try { settings = await api.getPayments(); } catch (e) { console.warn(e); }
+  const fees = (settings && settings.fees) || DEFAULT_FEES;
+  const paypal = settings && settings.paypal;
+  const level = feeLevel(p.grade);
+  const mine = g => g === 'grading' ? (p.disciplines || []).includes('karate') : g === 'other' || (p.disciplines || []).includes(g);
+  const groups = Object.keys(FEE_GROUPS).filter(g => fees.some(f => (f.group || 'other') === g))
+    .sort((a, b) => mine(b) - mine(a));
+  $('#pay-intro').innerHTML = paypal
+    ? `Paying for <b>${esc(p.name)}</b>. Your belt (${esc(GRADES[p.grade] || 'No belt')}) is <b>${FEE_LEVELS[level]}</b> level — those fees are marked.`
+    : 'Online payment isn’t set up yet — please pay Sensei at the dojo for now.';
+  $('#fee-list').innerHTML = groups.map(g => `<section class="fee-group${mine(g) ? '' : ' is-other'}"><h2>${FEE_GROUPS[g]}</h2>
+    ${fees.filter(f => (f.group || 'other') === g).map(f => {
+      const yours = f.level && f.level === level && mine(g);
+      return `<div class="card fee${yours ? ' is-yours' : ''}">
+        <div class="fee-main"><b>${esc(f.name)}</b>${yours ? ' <span class="tag tag--seal">Your level</span>' : ''}<small>${esc(f.note || '')}</small></div>
+        <div class="fee-price"><b>${money(f.price)}</b>${f.per ? `<small>/ ${esc(f.per)}</small>` : ''}</div>
+        ${paypal ? `<a class="btn btn--paypal btn--sm" href="${esc(paypalLink(paypal, f, p.name))}" target="_blank" rel="noopener" aria-label="Pay ${money(f.price)} for ${esc(f.name)} with PayPal">Pay with PayPal</a>` : ''}
+      </div>`;
+    }).join('')}</section>`).join('');
+}
 
 // ---- homework ----
 function drawHomework() {
