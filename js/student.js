@@ -4,7 +4,7 @@ import { NATIVE, pushState, enablePush, onPushTap, shareFile } from './native.js
 import {
   $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar, messageHTML,
   calendarYears, isRelevant, noticeIsFor, homeworkIsFor, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
-  toast, busy, registerSW, DEFAULT_FEES, FEE_GROUPS, FEE_LEVELS, feeLevel, money, paypalLink,
+  toast, busy, registerSW, DEFAULT_FEES, FEE_GROUPS, feeLevel, money, paypalLink,
   monthKey, monthName, isMonthly, PAY_METHODS,
 } from './common.js';
 
@@ -407,15 +407,18 @@ async function drawPay() {
   const track = PAYPAL_AUTO_TRACK && { uid: state.user.uid, notifyUrl: `https://europe-west2-${firebaseConfig.projectId}.cloudfunctions.net/paypalIpn` };
   drawPayStatus();
   const level = feeLevel(p.grade);
-  const mine = g => g === 'grading' ? (p.disciplines || []).includes('karate') : g === 'other' || (p.disciplines || []).includes(g);
-  const groups = Object.keys(FEE_GROUPS).filter(g => fees.some(f => (f.group || 'other') === g))
-    .sort((a, b) => mine(b) - mine(a));
-  $('#pay-intro').innerHTML = paypal
-    ? `<b>Tap a fee to pay it.</b> PayPal opens with the amount filled in — pay with a card or your PayPal account. Paying for <b>${esc(p.name)}</b>; your ${esc(GRADES[p.grade] || 'No belt')} fees (${FEE_LEVELS[level]}) are marked.`
-    : 'Online payment isn’t set up yet — please pay Sensei at the dojo for now.';
-  $('#fee-list').innerHTML = groups.map(g => `<section class="fee-group${mine(g) ? '' : ' is-other'}"><h2>${FEE_GROUPS[g]}</h2>
-    ${fees.filter(f => (f.group || 'other') === g).map(f => {
-      const yours = f.level && f.level === level && mine(g);
+  // Students can only pay their own monthly fee (for Karate, the one for their belt level) and
+  // drop-in / pay-per-lesson fees, for the classes they attend. Other fees stay in the coach panel.
+  const shown = studentFees(fees, p);
+  const groups = Object.keys(FEE_GROUPS).filter(g => shown.some(f => f.group === g));
+  $('#pay-intro').innerHTML = !paypal
+    ? 'Online payment isn’t set up yet — please pay Sensei at the dojo for now.'
+    : shown.length
+      ? `<b>Tap a fee to pay it.</b> PayPal opens with the amount filled in — pay with a card or your PayPal account. Showing the monthly and drop-in fees for <b>${esc(p.name)}</b> (${esc(GRADES[p.grade] || 'No belt')}). For anything else, please ask Sensei.`
+      : 'There are no monthly or drop-in fees for your classes. Please ask Sensei how to pay.';
+  $('#fee-list').innerHTML = groups.map(g => `<section class="fee-group"><h2>${FEE_GROUPS[g]}</h2>
+    ${shown.filter(f => f.group === g).map(f => {
+      const yours = f.per === 'month' && !!f.level;
       // The whole card is the payment link: one tap goes straight to PayPal with the amount filled in.
       const inner = `<span class="fee-main"><b>${esc(f.name)}</b>${yours ? ' <span class="tag tag--seal">Your level</span>' : ''}<small>${esc(f.note || '')}</small></span>
         <span class="fee-price"><b>${money(f.price)}</b>${f.per ? `<small>/ ${esc(f.per)}</small>` : ''}</span>`;
@@ -424,6 +427,14 @@ async function drawPay() {
             aria-label="Pay ${money(f.price)} for ${esc(f.name)} with PayPal or card">${inner}<span class="btn btn--paypal btn--sm" aria-hidden="true">Pay ${money(f.price)}</span></a>`
         : `<div class="card fee${yours ? ' is-yours' : ''}">${inner}</div>`;
     }).join('')}</section>`).join('');
+}
+
+// The fees a student may pay: monthly (their belt level's, if the fee has one) and drop-in.
+const DROP_IN = ['class', 'lesson', 'session'];
+function studentFees(fees, p) {
+  const level = feeLevel(p.grade);
+  return fees.filter(f => (p.disciplines || []).includes(f.group))
+    .filter(f => DROP_IN.includes(f.per) || (f.per === 'month' && (!f.level || f.level === level)));
 }
 
 // This month's fee status and the student's payment history.
