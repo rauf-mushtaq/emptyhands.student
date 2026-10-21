@@ -28,14 +28,12 @@ function readProfile(form) {
     guardian: (f.get('guardian') || '').trim(),
     phone: (f.get('phone') || '').trim(),
     disciplines: f.getAll('disciplines'),
-    dojo: f.get('dojo') || 'ilford',
     grade: f.get('grade') || 'none',
   };
 }
 function fillProfile(form, p) {
   for (const k of ['name', 'guardian', 'phone']) form.elements[k].value = p[k] || '';
   $$('[name=disciplines]', form).forEach(c => { c.checked = (p.disciplines || []).includes(c.value); });
-  $$('[name=dojo]', form).forEach(r => { r.checked = r.value === (p.dojo || 'ilford'); });
   form.elements.grade.value = p.grade || 'none';
 }
 function showError(form, msg) {

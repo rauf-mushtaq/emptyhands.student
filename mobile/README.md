@@ -73,7 +73,7 @@ Each time you run a workflow the build number goes up automatically. To release 
 - **App privacy / Data safety forms:** you collect *name, email, phone number* and *other user content* (classes, grade), linked to the user, used for *app functionality*, not for tracking. Data is encrypted in transit, and users can delete their account in the app.
 - **Screenshots:** iPhone 6.9″ (1320×2868) and Android phone. Take them from the app on a phone, or from a phone-size browser window.
 - **App Review sign-in:** Apple needs a working student login. Create one (e.g. `review@emptyhands.co.uk`) and put the email and password in the *App Review Information* section.
-- **Description**, for example: *"The official app for EmptyHands KaraTe School students in Ilford and Epping. See the dojo calendar with your training dates, closures, gradings and black-belt classes, get a countdown to your next class, and receive notices from your Sensei."*
+- **Description**, for example: *"The official app for EmptyHands KaraTe School students in Ilford. See the dojo calendar with your training dates, closures, gradings and black-belt classes, get a countdown to your next class, and receive notices from your Sensei."*
 
 ## Developing on your own computer (optional)
 
