@@ -1,5 +1,5 @@
 import { backend, DEMO, isCoach, errorText } from './backend.js';
-import { COACH_URL, RECOMMENDED, PAYPAL_AUTO_TRACK, firebaseConfig } from './config.js';
+import { COACH_URL, STUDENT_URL, RECOMMENDED, PAYPAL_AUTO_TRACK, firebaseConfig } from './config.js';
 import { NATIVE, pushState, enablePush, onPushTap, shareFile } from './native.js';
 import {
   $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar, messageHTML,
@@ -411,16 +411,18 @@ async function drawPay() {
   const groups = Object.keys(FEE_GROUPS).filter(g => fees.some(f => (f.group || 'other') === g))
     .sort((a, b) => mine(b) - mine(a));
   $('#pay-intro').innerHTML = paypal
-    ? `Paying for <b>${esc(p.name)}</b>. Your belt (${esc(GRADES[p.grade] || 'No belt')}) is <b>${FEE_LEVELS[level]}</b> level — those fees are marked.`
+    ? `<b>Tap a fee to pay it.</b> PayPal opens with the amount filled in — pay with a card or your PayPal account. Paying for <b>${esc(p.name)}</b>; your ${esc(GRADES[p.grade] || 'No belt')} fees (${FEE_LEVELS[level]}) are marked.`
     : 'Online payment isn’t set up yet — please pay Sensei at the dojo for now.';
   $('#fee-list').innerHTML = groups.map(g => `<section class="fee-group${mine(g) ? '' : ' is-other'}"><h2>${FEE_GROUPS[g]}</h2>
     ${fees.filter(f => (f.group || 'other') === g).map(f => {
       const yours = f.level && f.level === level && mine(g);
-      return `<div class="card fee${yours ? ' is-yours' : ''}">
-        <div class="fee-main"><b>${esc(f.name)}</b>${yours ? ' <span class="tag tag--seal">Your level</span>' : ''}<small>${esc(f.note || '')}</small></div>
-        <div class="fee-price"><b>${money(f.price)}</b>${f.per ? `<small>/ ${esc(f.per)}</small>` : ''}</div>
-        ${paypal ? `<a class="btn btn--paypal btn--sm" href="${esc(paypalLink(paypal, f, p.name, track))}" target="_blank" rel="noopener" aria-label="Pay ${money(f.price)} for ${esc(f.name)} with PayPal">Pay with PayPal</a>` : ''}
-      </div>`;
+      // The whole card is the payment link: one tap goes straight to PayPal with the amount filled in.
+      const inner = `<span class="fee-main"><b>${esc(f.name)}</b>${yours ? ' <span class="tag tag--seal">Your level</span>' : ''}<small>${esc(f.note || '')}</small></span>
+        <span class="fee-price"><b>${money(f.price)}</b>${f.per ? `<small>/ ${esc(f.per)}</small>` : ''}</span>`;
+      return paypal
+        ? `<a class="card fee fee--link${yours ? ' is-yours' : ''}" href="${esc(paypalLink(paypal, f, p.name, track, STUDENT_URL))}" target="_blank" rel="noopener"
+            aria-label="Pay ${money(f.price)} for ${esc(f.name)} with PayPal or card">${inner}<span class="btn btn--paypal btn--sm" aria-hidden="true">Pay ${money(f.price)}</span></a>`
+        : `<div class="card fee${yours ? ' is-yours' : ''}">${inner}</div>`;
     }).join('')}</section>`).join('');
 }
 
