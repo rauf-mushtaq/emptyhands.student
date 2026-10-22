@@ -3,7 +3,7 @@ import { COACH_URL, STUDENT_URL, RECOMMENDED, PAYPAL_AUTO_TRACK, firebaseConfig 
 import { NATIVE, pushState, enablePush, onPushTap, shareFile } from './native.js';
 import {
   $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar, messageHTML,
-  calendarYears, isRelevant, noticeIsFor, homeworkIsFor, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
+  calendarYears, isRelevant, noticeIsFor, homeworkIsFor, myAudiences, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
   toast, busy, registerSW, DEFAULT_FEES, FEE_GROUPS, feeLevel, money, paypalLink,
   monthKey, monthName, isMonthly, PAY_METHODS,
 } from './common.js';
@@ -131,6 +131,7 @@ function stopAll() {
   state.notices = []; state.thread = []; state.chat = null; state.seen = new Set();
   state.group = []; state.journal = []; state.homework = []; state.payments = [];
   state.loaded = {}; state.prevRead = null;
+  (state.groupStops || []).forEach(stop => stop()); state.groupStops = []; state.groupKey = '';
 }
 
 async function onAuth(user) {
@@ -206,6 +207,7 @@ function onProfile(p) {
   const oldBelt = state.profile.grade;
   state.profile = { ...state.profile, ...p };
   if (blocked(p)) { stopAll(); return; }
+  if (state.member) watchGroups();
   fillProfile($('#form-profile'), state.profile);
   if (state.view === 'pay' && !!p.feesExempt !== !!state.wasExempt) drawPay();
   state.wasExempt = !!p.feesExempt;
@@ -225,12 +227,23 @@ function startMember() {
   if (state.member) return;
   state.member = true;
   const uid = state.user.uid;
-  state.stops.push(api.watchNotifications(list => onList('notices', list)));
+  watchGroups();
   state.stops.push(api.watchThread(uid, list => onList('thread', list)));
   state.stops.push(api.watchChannel('group', list => onList('group', list)));
   state.stops.push(api.watchChannel('journal', list => onList('journal', list)));
-  state.stops.push(api.watchHomework(list => onList('homework', list)));
   state.stops.push(api.watchChat(uid, c => { state.chat = c; drawBadge(); }));
+}
+// Notices and homework depend on the student's groups (classes, dojo, belt), so these are
+// restarted whenever those change.
+function watchGroups() {
+  const groups = myAudiences(state.profile);
+  if (state.groupKey === groups.join()) return;
+  state.groupKey = groups.join();
+  (state.groupStops || []).forEach(stop => stop());
+  state.groupStops = [
+    api.watchNotifications(list => onList('notices', list), groups),
+    api.watchHomework(list => onList('homework', list), state.user.uid, groups),
+  ];
 }
 
 function myNotices() { return state.notices.filter(n => noticeIsFor(n, state.profile)); }
