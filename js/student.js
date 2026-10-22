@@ -2,7 +2,7 @@ import { backend, DEMO, isCoach, errorText } from './backend.js';
 import { COACH_URL, STUDENT_URL, RECOMMENDED, PAYPAL_AUTO_TRACK, firebaseConfig } from './config.js';
 import { NATIVE, pushState, enablePush, onPushTap, shareFile } from './native.js';
 import {
-  $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar, messageHTML,
+  $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar, messageHTML, wireEdits, editing,
   calendarYears, isRelevant, noticeIsFor, homeworkIsFor, myAudiences, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
   toast, busy, registerSW, DEFAULT_FEES, FEE_GROUPS, feeLevel, money, paypalLink,
   monthKey, monthName, isMonthly, PAY_METHODS,
@@ -376,20 +376,27 @@ function drawMenu() {
   const isNew = at => since !== null && at > since;
   let html;
   if (ch === 'notices') html = myNotices().slice().reverse().map(n => noticeHTML(n, isNew(n.createdAt) || n.createdAt > (state.profile.lastRead || 0)));
-  else if (ch === 'sensei') html = state.thread.map(m => messageHTML(m, m.from === 'student'));
-  else html = state[ch].map(m => messageHTML(m, m.uid === state.user.uid, m.uid === state.user.uid));
+  else if (ch === 'sensei') html = state.thread.map(m => messageHTML(m, m.from === 'student', false, m.from === 'student'));
+  else html = state[ch].map(m => { const mine = m.uid === state.user.uid; return messageHTML(m, mine, mine, mine); });
   const empty = { notices: 'No notices yet. When Sensei sends one, it will appear here.', group: 'No messages yet — say hello to everyone!', journal: 'Nothing logged yet. After you train, share what you practised.', sensei: 'No messages yet. You can message Sensei privately here.' }[ch];
   const feed = $('#menu-feed');
   feed.innerHTML = html.length ? html.join('') : `<div class="empty"><span aria-hidden="true">便</span><p>${empty}</p></div>`;
   drawBadge();
 }
 function scrollFeed() {
+  if (editing.id) return; // don't jump away from a message being edited
   requestAnimationFrame(() => { if (state.view === 'menu' && state.channel !== 'notices') scrollTo(0, document.body.scrollHeight); });
 }
 $('#menu-feed').addEventListener('click', async e => {
   const b = e.target.closest('[data-delmsg]');
   if (!b || !confirm('Delete your message?')) return;
   try { await api.deleteChannelMessage(state.channel, b.dataset.delmsg); } catch (err) { toast(errorText(err), 'bad'); }
+});
+wireEdits($('#menu-feed'), {
+  find: id => (state.channel === 'sensei' ? state.thread : state[state.channel] || []).find(m => m.id === id),
+  save: (id, text) => state.channel === 'sensei' ? api.editMessage(state.user.uid, id, text) : api.editChannelMessage(state.channel, id, text),
+  redraw: () => drawMenu(),
+  fail: err => toast(errorText(err), 'bad'),
 });
 
 const chatText = $('#chat-text');
