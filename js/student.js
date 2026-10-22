@@ -244,7 +244,7 @@ function announce(id, title, body) {
   state.seen.add(id);
   toast(title);
   if ('Notification' in window && Notification.permission === 'granted') {
-    try { new Notification(title, { body, icon: 'icon-192.png', tag: id }); } catch { /* not allowed in this context */ }
+    try { new Notification(title, { body, icon: 'home-icon-192.png', tag: id }); } catch { /* not allowed in this context */ }
   }
 }
 

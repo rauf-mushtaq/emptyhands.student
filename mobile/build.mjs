@@ -10,7 +10,7 @@ rmSync(www, { recursive: true, force: true });
 mkdirSync(www, { recursive: true });
 
 // The app pages. js/firebase-sdk.js and js/native.js are replaced by bundles below.
-for (const f of ['index.html', 'privacy.html', 'app.css', 'icon-192.png', 'assets/img/logo.png', 'assets/img/favicon.png']) cpSync(root + f, www + f);
+for (const f of ['index.html', 'privacy.html', 'app.css', 'home-icon-192.png', 'home-icon-180.png', 'assets/img/logo.png']) cpSync(root + f, www + f);
 cpSync(root + 'js', www + 'js', { recursive: true, filter: src => !/\/(firebase-sdk|native)\.js$/.test(src) });
 cpSync(root + 'assets/syllabus', www + 'assets/syllabus', { recursive: true });
 
