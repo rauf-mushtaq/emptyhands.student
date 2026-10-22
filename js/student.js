@@ -60,6 +60,7 @@ function show(id) {
   $$('#tabbar button').forEach(b => b.toggleAttribute('aria-current', b.dataset.go === id));
   if (signedIn) state.view = id;
   $('#top-user').toggleAttribute('aria-current', id === 'profile');
+  document.body.classList.remove('in-chat');
   if (id === 'menu') { drawMenu(); markRead(); scrollFeed(); } else scrollTo(0, 0);
   if (id === 'homework') drawHomework();
   if (id === 'pay') drawPay();
@@ -334,7 +335,7 @@ function noticeHTML(n, isNew) {
   </article>`;
 }
 
-// ---- EmptyHands menu ----
+// ---- EmptyHands chats ----
 const CHANNELS = {
   notices: { intro: 'Notices from Sensei. Only Sensei can post here.' },
   group: { intro: 'Group chat for everyone at EmptyHands — students, parents and Sensei. Everyone in the group can see these messages.', placeholder: 'Message the group…' },
@@ -347,10 +348,15 @@ $('#rec-link').href = RECOMMENDED.url;
 
 $('.channels').addEventListener('click', e => {
   const b = e.target.closest('[data-ch]');
-  if (!b) return;
+  if (!b || b.dataset.ch === state.channel) return;
   state.channel = b.dataset.ch;
   state.prevRead = null;
+  editing.id = null;
+  b.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
   drawMenu(); markRead(); scrollFeed();
+  // Fade the new channel in.
+  const box = $('#chat-scroll');
+  box.classList.remove('fade-in'); void box.offsetWidth; box.classList.add('fade-in');
 });
 
 function fillSender() {
@@ -366,6 +372,7 @@ function drawMenu() {
   const pending = state.profile.role !== 'student';
   $('#menu-pending').hidden = !pending;
   $('#menu-chat').hidden = pending;
+  document.body.classList.toggle('in-chat', state.view === 'menu' && !pending);
   if (pending) return;
   const ch = state.channel;
   $$('.channels [data-ch]').forEach(b => b.setAttribute('aria-selected', b.dataset.ch === ch));
@@ -380,12 +387,20 @@ function drawMenu() {
   else html = state[ch].map(m => { const mine = m.uid === state.user.uid; return messageHTML(m, mine, mine, mine); });
   const empty = { notices: 'No notices yet. When Sensei sends one, it will appear here.', group: 'No messages yet — say hello to everyone!', journal: 'Nothing logged yet. After you train, share what you practised.', sensei: 'No messages yet. You can message Sensei privately here.' }[ch];
   const feed = $('#menu-feed');
+  // Keep following the conversation if they were already at the latest message.
+  const box = $('#chat-scroll');
+  const atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
   feed.innerHTML = html.length ? html.join('') : `<div class="empty"><span aria-hidden="true">便</span><p>${empty}</p></div>`;
+  if (atEnd && ch !== 'notices' && !editing.id) box.scrollTop = box.scrollHeight;
   drawBadge();
 }
 function scrollFeed() {
   if (editing.id) return; // don't jump away from a message being edited
-  requestAnimationFrame(() => { if (state.view === 'menu' && state.channel !== 'notices') scrollTo(0, document.body.scrollHeight); });
+  // The chat panel scrolls by itself: new messages at the bottom, notices from the top.
+  requestAnimationFrame(() => {
+    const box = $('#chat-scroll');
+    if (state.view === 'menu') box.scrollTop = state.channel === 'notices' ? 0 : box.scrollHeight;
+  });
 }
 $('#menu-feed').addEventListener('click', async e => {
   const b = e.target.closest('[data-delmsg]');
