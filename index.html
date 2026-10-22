@@ -46,6 +46,7 @@
         <p class="form-error" hidden></p>
         <button class="btn btn--seal btn--block" type="submit">Sign in</button>
         <button class="linkish" type="button" id="forgot">Forgotten your password?</button>
+        <button class="btn btn--ghost btn--block install-btn" type="button" data-install hidden>Add the app to your home screen</button>
       </form>
 
       <form id="form-signup" class="stack" novalidate hidden>
@@ -201,6 +202,7 @@
     <div class="row-actions">
       <button class="btn btn--ghost" data-signout>Sign out</button>
       <button class="linkish" data-go="pay">Pay fees</button>
+      <button class="linkish install-btn" type="button" data-install hidden>Add to home screen</button>
       <a class="linkish" href="privacy.html" target="_blank" rel="noopener">Privacy policy</a>
       <button class="linkish danger" id="delete-account">Delete my account</button>
     </div>
@@ -222,6 +224,28 @@
     <p id="day-type"></p>
     <p class="day-note" id="day-note"></p>
     <button class="btn btn--block">Close</button>
+  </form>
+</dialog>
+
+<dialog id="install-dialog" class="sheet">
+  <form method="dialog" class="stack">
+    <div class="install-head"><img src="home-icon-180.png" alt="" width="64" height="64"><div><p class="eyebrow">Add to your home screen</p><h2>EmptyHands Student</h2></div></div>
+    <div id="install-android" hidden>
+      <p>Install the app so it opens from your home screen, full-screen, like any other app.</p>
+      <button type="button" class="btn btn--seal btn--block" id="install-now">Install the app</button>
+    </div>
+    <div id="install-ios" hidden>
+      <ol class="install-steps">
+        <li>Tap <b>Share</b> <span class="ios-share" aria-label="the Share button"></span> <span id="install-ios-where"></span></li>
+        <li>Scroll down and tap <b>Add to Home Screen</b></li>
+        <li>Tap <b>Add</b> — the EmptyHands icon appears on your home screen.</li>
+      </ol>
+      <p class="muted fine" id="install-ios-safari" hidden>Using Chrome or another browser? The steps are the same; on older iPhones open this page in <b>Safari</b> first.</p>
+    </div>
+    <div id="install-other" hidden>
+      <p>Open your browser’s menu (<b>⋮</b> or <b>⋯</b>) and choose <b>Install app</b> or <b>Add to Home screen</b>.</p>
+    </div>
+    <button class="btn btn--ghost btn--block" value="close">Not now</button>
   </form>
 </dialog>
 

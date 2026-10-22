@@ -674,6 +674,45 @@ $('#enable-alerts').addEventListener('click', async () => {
 });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && state.view === 'menu') markRead(); });
 
+// ---- add to home screen ----
+// Android/desktop Chrome offer an install prompt we can show from a button; iPhone and iPad
+// don't, so they get the Share → Add to Home Screen steps. Arriving with ?install=1 (from
+// the website's "Get the app" button) opens this straight away.
+let installEvent = null;
+const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+function installButtons() {
+  $$('[data-install]').forEach(b => { b.hidden = NATIVE || standalone() || !(installEvent || isIOS); });
+}
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvent = e; installButtons(); });
+addEventListener('appinstalled', () => { installEvent = null; installButtons(); $('#install-dialog').open && $('#install-dialog').close(); toast('Installed — open EmptyHands Student from your home screen.'); });
+function openInstall() {
+  if (NATIVE || standalone()) return;
+  $('#install-android').hidden = !installEvent;
+  $('#install-ios').hidden = !(isIOS && !installEvent);
+  $('#install-other').hidden = !!installEvent || isIOS;
+  const ipad = /iPad/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  $('#install-ios-where').textContent = ipad ? '(top right of the screen)' : '(at the bottom of the screen)';
+  $('#install-ios-safari').hidden = !/CriOS|FxiOS|EdgiOS/.test(navigator.userAgent);
+  $('#install-dialog').showModal();
+}
+document.addEventListener('click', e => { if (e.target.closest('[data-install]')) openInstall(); });
+$('#install-now').addEventListener('click', async () => {
+  if (!installEvent) return;
+  installEvent.prompt();
+  const { outcome } = await installEvent.userChoice;
+  installEvent = null;
+  $('#install-dialog').close();
+  installButtons();
+  if (outcome !== 'accepted') toast('No problem — you can add it later from your profile.');
+});
+if (new URLSearchParams(location.search).get('install')) {
+  history.replaceState(null, '', location.pathname + location.hash);
+  // Give Chrome a moment to offer its install prompt before choosing what to show.
+  setTimeout(openInstall, installEvent ? 0 : 900);
+}
+installButtons();
+
 // ---- start ----
 (async () => {
   $('#demo-banner').hidden = !DEMO;
