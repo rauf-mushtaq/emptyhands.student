@@ -41,13 +41,8 @@ GitHub builds the apps for you (**Actions** tab → *Android app* / *iOS app*), 
 
 ## 2. Google Play
 
-1. Create a signing key once and keep it safe; you'll need it for every future update. On any computer with Java installed:
-   ```sh
-   keytool -genkey -v -keystore emptyhands-release.jks -alias emptyhands -keyalg RSA -keysize 2048 -validity 10000
-   base64 -i emptyhands-release.jks | pbcopy     # macOS; on Windows: certutil -encode, on Linux: base64 -w0
-   ```
-2. On GitHub, open **Settings → Secrets and variables → Actions** and add:
-   `ANDROID_KEYSTORE_BASE64` (the base64 text), `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` (`emptyhands`) and `ANDROID_KEY_PASSWORD`.
+1. The upload key is `android/upload-key.jks` (alias `emptyhands`), locked with a password. Keep the password safe; you need it for every update. Google Play holds the real app signing key, so a lost or leaked upload key can be reset in Play Console (*Setup → App signing*).
+2. On GitHub, open **Settings → Secrets and variables → Actions** and add the secret `ANDROID_KEYSTORE_PASSWORD`.
 3. Run **Actions → Android app → Run workflow**. Download the `.aab` from the run's *Artifacts*.
 4. In [Play Console](https://play.google.com/console), create the app, open **Testing → Internal testing**, and upload the `.aab`. Install it on your own phone from the testing link and check sign-in, the calendar and notifications.
 5. Fill in the store listing (see *Store listing* below), then go through closed testing if your account needs it, then **Production**.

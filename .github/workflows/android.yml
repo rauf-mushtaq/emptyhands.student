@@ -1,5 +1,5 @@
-# Builds the Android app. With the signing secrets set (see mobile/README.md) it produces a
-# signed .aab to upload to Google Play; without them, a debug .apk for testing on a phone.
+# Builds the Android app. With the ANDROID_KEYSTORE_PASSWORD secret set (see mobile/README.md) it
+# produces a signed .aab to upload to Google Play; without it, a debug .apk for testing on a phone.
 name: Android app
 
 on:
@@ -15,7 +15,7 @@ jobs:
       run:
         working-directory: mobile
     env:
-      HAS_KEY: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' }}
+      HAS_KEY: ${{ secrets.ANDROID_KEYSTORE_PASSWORD != '' }}
       VERSION_CODE: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
@@ -39,20 +39,26 @@ jobs:
           if [ -n "$GOOGLE_SERVICES_JSON" ]; then printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json; fi
           if [ ! -f android/app/google-services.json ]; then echo "::warning::No google-services.json — push notifications won't work in this build."; fi
 
+      # The upload key (mobile/android/upload-key.jks) is locked with ANDROID_KEYSTORE_PASSWORD.
+      # A keystore in ANDROID_KEYSTORE_BASE64 replaces it, if set.
       - name: Signing key
         if: env.HAS_KEY == 'true'
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
-          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
-          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ]; then
+            echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.jks"
+            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
+          else
+            echo "ANDROID_KEYSTORE_PATH=$GITHUB_WORKSPACE/mobile/android/upload-key.jks" >> "$GITHUB_ENV"
+          fi
 
       - name: Build
         working-directory: mobile/android
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS || 'emptyhands' }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD || secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           if [ "$HAS_KEY" = true ]; then ./gradlew --no-daemon bundleRelease assembleRelease; else ./gradlew --no-daemon assembleDebug; fi
 
