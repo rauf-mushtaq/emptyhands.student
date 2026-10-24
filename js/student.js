@@ -1,6 +1,7 @@
 import { backend, DEMO, isCoach, errorText } from './backend.js';
 import { COACH_URL, STUDENT_URL, RECOMMENDED, PAYPAL_AUTO_TRACK, firebaseConfig } from './config.js';
 import { NATIVE, pushState, enablePush, onPushTap, shareFile } from './native.js';
+import { webPushReady, webPushToken } from './webpush.js';
 import {
   $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar, messageHTML, wireEdits, editing,
   calendarYears, isRelevant, noticeIsFor, homeworkIsFor, myAudiences, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
@@ -199,7 +200,8 @@ async function enter(user) {
   show(VIEWS.includes(start) ? start : start === 'notices' ? 'menu' : 'home');
   drawHome();
   alertsButton();
-  if (NATIVE && !DEMO && (await pushState()) === 'granted') turnOnPush(true);
+  $('#class-reminders').checked = p.classReminders !== false;
+  if (!DEMO && (NATIVE ? (await pushState()) === 'granted' : webPushReady() && Notification.permission === 'granted')) turnOnPush(true);
 }
 
 function onProfile(p) {
@@ -257,7 +259,8 @@ function announce(id, title, body) {
   if (state.seen.has(id)) return;
   state.seen.add(id);
   toast(title);
-  if ('Notification' in window && Notification.permission === 'granted') {
+  // With push on, the notification itself comes from the push (no double pop-ups).
+  if (!state.pushToken && 'Notification' in window && Notification.permission === 'granted') {
     try { new Notification(title, { body, icon: 'home-icon-192.png', tag: id }); } catch { /* not allowed in this context */ }
   }
 }
@@ -684,28 +687,43 @@ $('#form-delete').addEventListener('submit', async e => {
   });
 });
 
-// ---- alerts: push notifications in the phone app, browser notifications on the web ----
+// ---- notifications: native push in the phone apps, web push on the website / home-screen app ----
+// Sensei's notices, messages and homework, class reminders and fee reminders all arrive this way.
 async function turnOnPush(quiet) {
   try {
-    const token = await enablePush(async t => {
-      if (state.user) await api.addPushToken(state.user.uid, t);
+    const save = async t => {
+      if (state.user && t !== state.pushToken) await api.addPushToken(state.user.uid, t);
       state.pushToken = t;
-    });
-    if (!quiet) toast(token ? 'Notifications on — we’ll let you know when Sensei sends a notice, message or homework.' : 'Notifications are off. You can turn them on in your phone’s Settings.');
+    };
+    const token = NATIVE ? await enablePush(save) : await webPushToken(!quiet).then(async t => { if (t) await save(t); return t; });
+    if (!quiet) toast(token ? 'Notifications on: we’ll let you know about classes, messages from Sensei, homework and fees.' : 'Notifications are off. You can turn them on in your device’s Settings.');
   } catch (err) { console.warn(err); if (!quiet) toast('Couldn’t turn on notifications. Please try again.', 'bad'); }
   alertsButton();
 }
 async function alertsButton() {
-  const btn = $('#enable-alerts');
-  if (NATIVE) { btn.hidden = DEMO || (await pushState()) === 'granted'; return; }
-  btn.hidden = !('Notification' in window) || Notification.permission !== 'default';
+  const on = !!state.pushToken;
+  let can = false, status;
+  if (NATIVE) { can = !DEMO && !on; status = on ? 'On for this device.' : 'Off for this device.'; }
+  else if (webPushReady()) {
+    can = !on && Notification.permission !== 'denied';
+    status = on ? 'On for this device.' : Notification.permission === 'denied' ? 'Blocked in your browser settings. Allow notifications for this site to turn them on.' : 'Off for this device.';
+  } else if (isIOS && !standalone()) status = 'On iPhone and iPad, add EmptyHands Student to your home screen first, then turn on notifications from there.';
+  else status = 'Notifications aren’t available on this device yet. You’ll still see everything when you open the app.';
+  $$('[data-notify-on]').forEach(b => { b.hidden = !can; });
+  $('#notify-status').textContent = status;
 }
 onPushTap(() => { if (state.profile) show('menu'); });
-$('#enable-alerts').addEventListener('click', async () => {
-  if (NATIVE) return turnOnPush(false);
-  const r = await Notification.requestPermission();
-  toast(r === 'granted' ? 'Alerts on — you’ll get a pop-up for new notices and messages while the app is open.' : 'Alerts are off. You can change this in your browser settings.');
-  alertsButton();
+document.addEventListener('click', e => { if (e.target.closest('[data-notify-on]')) turnOnPush(false); });
+$('#class-reminders').addEventListener('change', async e => {
+  try {
+    await api.setClassReminders(state.user.uid, e.target.checked);
+    toast(e.target.checked ? 'Class reminders on.' : 'Class reminders off.');
+  } catch (err) { e.target.checked = !e.target.checked; toast(errorText(err), 'bad'); }
+});
+// Tapping a notification opens the app on the right page (e.g. #pay for a fees reminder).
+addEventListener('hashchange', () => {
+  const id = location.hash.slice(1);
+  if (state.profile && VIEWS.includes(id) && id !== state.view) show(id);
 });
 document.addEventListener('visibilitychange', () => { if (!document.hidden && state.view === 'menu') markRead(); });
 

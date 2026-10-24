@@ -116,7 +116,7 @@
   <section class="view" id="view-menu" hidden>
     <div class="view-head">
       <div><p class="eyebrow">Notices &amp; chat</p><h1>EmptyHands chats</h1></div>
-      <div class="view-actions"><button class="btn btn--ghost btn--sm" id="enable-alerts" hidden>Turn on alerts</button></div>
+      <div class="view-actions"><button class="btn btn--ghost btn--sm" id="enable-alerts" data-notify-on hidden>Turn on notifications</button></div>
     </div>
     <div class="card pending-card" id="menu-pending" hidden>
       <div class="pending-kanji" aria-hidden="true">待</div>
@@ -201,6 +201,12 @@
       <p class="form-error" hidden></p>
       <button class="btn btn--seal" type="submit">Save changes</button>
     </form>
+    <section class="card stack notify-card" id="notify-card">
+      <h2>Notifications</h2>
+      <p class="muted fine" id="notify-status"></p>
+      <button class="btn btn--seal btn--sm" type="button" data-notify-on hidden>Turn on notifications</button>
+      <label class="switch" id="class-reminders-wrap"><input type="checkbox" id="class-reminders" checked><span></span>Class reminders: 2 hours and 5 minutes before your classes</label>
+    </section>
     <div class="row-actions">
       <button class="btn btn--ghost" data-signout>Sign out</button>
       <button class="linkish" data-go="pay">Pay fees</button>
