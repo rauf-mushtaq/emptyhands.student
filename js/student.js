@@ -285,8 +285,8 @@ function refresh() {
   drawBadge();
 }
 
-// Unread counts per channel. Group chat and journal only show a dot; the Menu badge counts
-// Sensei's notices and private messages.
+// Unread counts per channel: each channel shows a dot, and the Chats badge counts every unread
+// message in all of them.
 const seenAt = ch => ((state.profile.seen || {})[ch]) || 0;
 function unreadIn(ch) {
   if (!state.member) return 0;
@@ -294,7 +294,7 @@ function unreadIn(ch) {
   if (ch === 'sensei') return coachMessages().filter(m => m.createdAt > ((state.chat && state.chat.studentReadAt) || 0)).length;
   return state[ch].filter(m => m.uid !== state.user.uid && m.createdAt > seenAt(ch)).length;
 }
-function unread() { return unreadIn('notices') + unreadIn('sensei'); }
+function unread() { return ['notices', 'group', 'journal', 'sensei'].reduce((n, ch) => n + unreadIn(ch), 0); }
 function drawBadge() {
   const n = unread();
   $('#badge').hidden = !n;
