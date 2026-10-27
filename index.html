@@ -74,6 +74,7 @@
     <h1 class="greeting" id="home-greeting"></h1>
     <div class="card next-card" id="next-card"></div>
     <button type="button" class="card pay-cta" data-go="pay"><span class="pay-cta-icon" aria-hidden="true">£</span><span><b>Pay fees</b><small>Monthly fees, membership and gradings with PayPal</small></span><span aria-hidden="true">→</span></button>
+    <button type="button" class="card pay-cta lic-cta" data-go="licence"><span class="pay-cta-icon" aria-hidden="true">帯</span><span><b>My licence</b><small>Your membership details and belt record</small></span><span aria-hidden="true">→</span></button>
     <div class="home-grid">
       <div>
         <div class="card-head"><h2>Coming up for you</h2><button class="linkish" data-go="calendar">Full calendar →</button></div>
@@ -191,6 +192,16 @@
     <p class="muted fine">Payments go straight to EmptyHands through PayPal, with the student’s name attached so Sensei knows who has paid. You don’t need a PayPal account — you can pay by debit or credit card. Afterwards, tap “Back to EmptyHands” to return here. Classes can’t be carried forward.</p>
   </section>
 
+  <!-- My licence: details and belt record, filled in by Sensei -->
+  <section class="view" id="view-licence" hidden>
+    <div class="view-head no-print">
+      <div><p class="eyebrow">Your record</p><h1>My licence</h1></div>
+      <div class="view-actions"><button class="btn btn--ghost btn--sm" id="lic-print" type="button">Print / save PDF</button></div>
+    </div>
+    <div id="lic-sheet"></div>
+    <p class="muted fine no-print" id="lic-note"></p>
+  </section>
+
   <!-- Profile -->
   <section class="view" id="view-profile" hidden>
     <p class="eyebrow">Your account</p>
@@ -210,6 +221,7 @@
     <div class="row-actions">
       <button class="btn btn--ghost" data-signout>Sign out</button>
       <button class="linkish" data-go="pay">Pay fees</button>
+      <button class="linkish" data-go="licence">My licence</button>
       <button class="linkish install-btn" type="button" data-install hidden>Add to home screen</button>
       <a class="linkish" href="privacy.html" target="_blank" rel="noopener">Privacy policy</a>
       <button class="linkish danger" id="delete-account">Delete my account</button>

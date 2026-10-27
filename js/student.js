@@ -3,13 +3,13 @@ import { COACH_URL, STUDENT_URL, RECOMMENDED, PAYPAL_AUTO_TRACK, firebaseConfig 
 import { NATIVE, pushState, enablePush, onPushTap, shareFile } from './native.js';
 import { webPushReady, webPushToken } from './webpush.js';
 import {
-  $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar, messageHTML, wireEdits, editing,
+  $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar, messageHTML, wireEdits, editing, licenceHTML,
   calendarYears, isRelevant, noticeIsFor, homeworkIsFor, myAudiences, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
   toast, busy, registerSW, DEFAULT_FEES, FEE_GROUPS, feeLevel, money, paypalLink,
   monthKey, monthName, isMonthly, PAY_METHODS,
 } from './common.js';
 
-const VIEWS = ['home', 'calendar', 'menu', 'homework', 'syllabus', 'pay', 'profile'];
+const VIEWS = ['home', 'calendar', 'menu', 'homework', 'syllabus', 'pay', 'licence', 'profile'];
 const state = {
   user: null, profile: null, notices: [], thread: [], chat: null, cal: null,
   group: [], journal: [], homework: [], channel: 'notices',
@@ -65,6 +65,7 @@ function show(id) {
   if (id === 'menu') { drawMenu(); markRead(); scrollFeed(); } else scrollTo(0, 0);
   if (id === 'homework') drawHomework();
   if (id === 'pay') drawPay();
+  if (id === 'licence') drawLicence();
   if (id === 'calendar') drawCalendar(true);
 }
 document.addEventListener('click', e => {
@@ -195,6 +196,7 @@ async function enter(user) {
   // Live profile: notices when Sensei accepts, removes or declines this account.
   state.stops.push(api.watchProfile(user.uid, onProfile));
   state.stops.push(api.watchMyPayments(user.uid, list => { state.payments = list; if (state.view === 'pay') drawPayStatus(); }));
+  state.stops.push(api.watchLicence(user.uid, l => { state.licence = l; if (state.view === 'licence') drawLicence(); }));
   if (p.role === 'student') startMember();
   const start = location.hash.slice(1);
   show(VIEWS.includes(start) ? start : start === 'notices' ? 'menu' : 'home');
@@ -779,3 +781,13 @@ installButtons();
   }
   api.onAuth(onAuth);
 })();
+
+// ---- My licence: details and belt record, filled in by Sensei ----
+function drawLicence() {
+  if (!state.profile) return;
+  $('#lic-sheet').innerHTML = licenceHTML(state.licence, { ...state.profile, email: state.user.email });
+  $('#lic-note').textContent = state.licence
+    ? 'Sensei keeps this up to date after each grading. Your name, email and phone come from your profile.'
+    : 'Sensei hasn’t filled in your licence yet. It will appear here once they have.';
+}
+$('#lic-print').addEventListener('click', () => print());
