@@ -389,6 +389,7 @@ function drawMenu() {
   $('#ch-intro').textContent = CHANNELS[ch].intro;
   $('#form-chat').hidden = ch === 'notices';
   $('#chat-text').placeholder = CHANNELS[ch].placeholder || '';
+  $('#journal-phrases').hidden = ch !== 'journal';
   const since = state.prevRead && state.prevRead.ch === ch ? state.prevRead.at : null;
   const isNew = at => since !== null && at > since;
   let html;
@@ -425,6 +426,24 @@ wireEdits($('#menu-feed'), {
 });
 
 const chatText = $('#chat-text');
+// Ready-made sentences for the training journal: tap to add, then edit or send.
+const JOURNAL_PHRASES = [
+  'I practised my grading kata.',
+  'I practised my dojo theory.',
+  'I watched Kanazawa Sensei do my kata and practised while watching him, to spot my mistakes.',
+  'I practised my kihon (basics).',
+  'I practised my stances.',
+  'I did my homework from Sensei.',
+];
+$('#journal-phrases').innerHTML = JOURNAL_PHRASES.map(t => `<button type="button" class="chip" data-phrase="${esc(t)}">${esc(t)}</button>`).join('');
+$('#journal-phrases').addEventListener('click', e => {
+  const b = e.target.closest('[data-phrase]');
+  if (!b) return;
+  const t = chatText.value.trim();
+  chatText.value = t ? t + ' ' + b.dataset.phrase : b.dataset.phrase;
+  chatText.dispatchEvent(new Event('input'));
+  chatText.focus();
+});
 chatText.addEventListener('input', () => { chatText.style.height = 'auto'; chatText.style.height = Math.min(chatText.scrollHeight, 160) + 'px'; });
 chatText.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !NATIVE && matchMedia('(pointer: fine)').matches) { e.preventDefault(); $('#form-chat').requestSubmit(); } });
 $('#form-chat').addEventListener('submit', async e => {
