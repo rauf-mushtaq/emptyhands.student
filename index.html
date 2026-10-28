@@ -74,6 +74,7 @@
     <h1 class="greeting" id="home-greeting"></h1>
     <div class="card next-card" id="next-card"></div>
     <button type="button" class="card pay-cta" data-go="pay"><span class="pay-cta-icon" aria-hidden="true">£</span><span><b>Pay fees</b><small>Monthly fees, membership and gradings with PayPal</small></span><span aria-hidden="true">→</span></button>
+    <button type="button" class="card pay-cta medal-cta" data-go="medals"><span class="pay-cta-icon" aria-hidden="true">🏅</span><span><b>My medals <span class="count-pill" id="medal-count" hidden></span></b><small>Medals and awards from Sensei</small></span><span aria-hidden="true">→</span></button>
     <button type="button" class="card pay-cta lic-cta" data-go="licence"><span class="pay-cta-icon" aria-hidden="true">帯</span><span><b>My licence</b><small>Your membership details and belt record</small></span><span aria-hidden="true">→</span></button>
     <div class="home-grid">
       <div>
@@ -190,6 +191,12 @@
     <div class="fees" id="fee-list"></div>
     <section id="pay-history-wrap" hidden><h2>Your payments</h2><ul class="pay-history" id="pay-history"></ul></section>
     <p class="muted fine">Payments go straight to EmptyHands through PayPal, with the student’s name attached so Sensei knows who has paid. You don’t need a PayPal account — you can pay by debit or credit card. Afterwards, tap “Back to EmptyHands” to return here. Classes can’t be carried forward.</p>
+  </section>
+
+  <!-- My medals: awarded by Sensei -->
+  <section class="view" id="view-medals" hidden>
+    <div class="view-head"><div><p class="eyebrow">Well done!</p><h1>My medals</h1></div></div>
+    <div class="medal-list" id="my-medals"></div>
   </section>
 
   <!-- My licence: details and belt record, filled in by Sensei -->

@@ -3,16 +3,16 @@ import { COACH_URL, STUDENT_URL, RECOMMENDED, PAYPAL_AUTO_TRACK, firebaseConfig 
 import { NATIVE, pushState, enablePush, onPushTap, shareFile } from './native.js';
 import { webPushReady, webPushToken } from './webpush.js';
 import {
-  $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar, messageHTML, wireEdits, editing, licenceHTML,
+  $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar, messageHTML, wireEdits, editing, licenceHTML, MEDALS, medalHTML,
   calendarYears, isRelevant, noticeIsFor, homeworkIsFor, myAudiences, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
   toast, busy, registerSW, DEFAULT_FEES, FEE_GROUPS, feeLevel, money, paypalLink,
   monthKey, monthName, isMonthly, PAY_METHODS,
 } from './common.js';
 
-const VIEWS = ['home', 'calendar', 'menu', 'homework', 'syllabus', 'pay', 'licence', 'profile'];
+const VIEWS = ['home', 'calendar', 'menu', 'homework', 'syllabus', 'pay', 'licence', 'medals', 'profile'];
 const state = {
   user: null, profile: null, notices: [], thread: [], chat: null, cal: null,
-  group: [], journal: [], homework: [], channel: 'notices',
+  group: [], journal: [], homework: [], awards: [], channel: 'notices',
   year: new Date().getFullYear(), view: 'home', stops: [], member: false, seen: new Set(),
 };
 let api;
@@ -66,6 +66,7 @@ function show(id) {
   if (id === 'homework') drawHomework();
   if (id === 'pay') drawPay();
   if (id === 'licence') drawLicence();
+  if (id === 'medals') drawMedals();
   if (id === 'calendar') drawCalendar(true);
 }
 document.addEventListener('click', e => {
@@ -197,6 +198,7 @@ async function enter(user) {
   state.stops.push(api.watchProfile(user.uid, onProfile));
   state.stops.push(api.watchMyPayments(user.uid, list => { state.payments = list; if (state.view === 'pay') drawPayStatus(); }));
   state.stops.push(api.watchLicence(user.uid, l => { state.licence = l; if (state.view === 'licence') drawLicence(); }));
+  state.stops.push(api.watchMyAwards(user.uid, list => onList('awards', list)));
   if (p.role === 'student') startMember();
   const start = location.hash.slice(1);
   show(VIEWS.includes(start) ? start : start === 'notices' ? 'menu' : 'home');
@@ -276,10 +278,12 @@ function onList(kind, list) {
   if (kind === 'notices') myNotices().forEach(n => fresh(n) && n.createdAt > (state.profile.lastRead || 0) ? announce(n.id, 'New notice from Sensei: ' + n.title, n.body) : state.seen.add(n.id));
   else if (kind === 'thread') list.forEach(m => fresh(m) && m.from === 'coach' ? announce(m.id, 'Message from ' + (m.author || 'Sensei'), m.text) : state.seen.add(m.id));
   else if (kind === 'homework') myHomework().forEach(h => fresh(h) ? announce(h.id, 'New homework: ' + h.title, h.details || '') : state.seen.add(h.id));
+  else if (kind === 'awards') list.forEach(a => fresh(a) ? announce(a.id, `${(MEDALS[a.medal] || MEDALS.star).icon} You’ve earned a medal: ${a.title}`, a.note || '') : state.seen.add(a.id));
   refresh();
 }
 
 function refresh() {
+  drawMedals();
   if (state.view === 'menu' && !document.hidden) markRead();
   drawMenu();
   drawHome();
@@ -791,3 +795,12 @@ function drawLicence() {
     : 'Sensei hasn’t filled in your licence yet. It will appear here once they have.';
 }
 $('#lic-print').addEventListener('click', () => print());
+
+// ---- My medals: awarded by Sensei ----
+function drawMedals() {
+  const list = state.awards || [];
+  $('#medal-count').hidden = !list.length;
+  $('#medal-count').textContent = list.length;
+  $('#my-medals').innerHTML = list.length ? list.map(a => medalHTML(a)).join('')
+    : '<div class="empty"><span aria-hidden="true">🏅</span><p>No medals yet. Keep training. Sensei awards medals for things like attendance, effort and great kata!</p></div>';
+}
