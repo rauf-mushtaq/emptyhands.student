@@ -1,5 +1,5 @@
 import { backend, DEMO, isCoach, errorText } from './backend.js';
-import { COACH_URL, STUDENT_URL, RECOMMENDED, PAYPAL_AUTO_TRACK, firebaseConfig } from './config.js';
+import { COACH_URL, STUDENT_URL, SITE_URL, RECOMMENDED, PAYPAL_AUTO_TRACK, firebaseConfig } from './config.js';
 import { NATIVE, pushState, enablePush, onPushTap, shareFile } from './native.js';
 import { webPushReady, webPushToken } from './webpush.js';
 import {
@@ -62,6 +62,7 @@ function show(id) {
   if (signedIn) state.view = id;
   $('#top-user').toggleAttribute('aria-current', id === 'profile');
   document.body.classList.remove('in-chat');
+  document.body.classList.toggle('on-home', id === 'home');
   if (id === 'menu') { drawMenu(); markRead(); scrollFeed(); } else scrollTo(0, 0);
   if (id === 'homework') drawHomework();
   if (id === 'pay') drawPay();
@@ -539,28 +540,91 @@ $('#hw-list').addEventListener('change', async e => {
   try { await api.setHomeworkDone(state.user.uid, id, done); } catch (err) { toast(errorText(err), 'bad'); }
 });
 
-// ---- home ----
+// ---- home: hero highlights, quick actions, schedule, latest and explore ----
+const EXPLORE = [
+  { img: 'syllabus.webp', title: 'Karate syllabus', sub: '10th kyu to Shodan', go: 'syllabus' },
+  { img: 'tiger.webp', title: 'Watch: ' + RECOMMENDED.name, sub: 'Kata to practise at home', href: RECOMMENDED.url },
+  { img: 'taichi.webp', title: 'Tai Chi at EmptyHands', sub: 'Balance and calm', href: SITE_URL + 'tai-chi.html' },
+  { img: 'yoga.webp', title: 'Yoga', sub: 'Flexibility and wellbeing', href: SITE_URL + 'yoga.html' },
+  { img: 'students.webp', title: 'Our students', sub: 'Stories from the dojo', href: SITE_URL + 'testimonials.html' },
+  { img: 'dojo.webp', title: 'EmptyHands website', sub: 'Classes, fees and more', href: SITE_URL },
+];
+$('#explore').innerHTML = EXPLORE.map(x => {
+  const inner = `<img src="assets/img/explore/${x.img}" alt="" loading="lazy"><span><b>${esc(x.title)}</b><small>${esc(x.sub)}</small></span>`;
+  return x.go ? `<button type="button" class="explore-card" data-go="${x.go}">${inner}</button>`
+    : `<a class="explore-card" href="${esc(x.href)}" target="_blank" rel="noopener">${inner}</a>`;
+}).join('');
+
+let heroTimer;
+function heroSlides() {
+  const p = state.profile;
+  const hour = new Date().getHours();
+  const first = esc((p.name || '').split(' ')[0]);
+  const slides = [{ title: `${hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'}, ${first}`, text: longDate(todayKey()), art: '<img src="assets/img/logo.png" alt="">', go: 'profile' }];
+  const award = (state.awards || [])[0];
+  if (award && Date.now() - award.createdAt < 30 * 864e5) {
+    slides.unshift({ title: 'Nice work!', text: `You’ve earned a medal: ${esc(award.title)}`, art: `<span class="hero-emoji">${(MEDALS[award.medal] || MEDALS.star).icon}</span>`, go: 'medals' });
+  }
+  const days = (state.cal && state.cal.days) || {};
+  const nextClass = upcoming(days, p, 7).find(d => ['training', 'blackbelt', 'grading'].includes(d.type));
+  if (nextClass) slides.push({ title: whenText(nextClass.key) === 'Today' ? 'Class today' : 'Next class', text: `${TYPES[nextClass.type].label}, ${shortDate(nextClass.key)}`, art: '<span class="hero-kanji">道</span>', go: 'calendar' });
+  if (state.member) {
+    const unreadNotice = myNotices().find(n => n.createdAt > (p.lastRead || 0));
+    if (unreadNotice) slides.push({ title: 'New from Sensei', text: esc(unreadNotice.title), art: '<span class="hero-kanji">知</span>', go: 'menu' });
+    const todo = myHomework().filter(h => !isDone(h)).length;
+    if (todo) slides.push({ title: 'Homework', text: `You have ${todo} thing${todo === 1 ? '' : 's'} to practise`, art: '<span class="hero-kanji">宿</span>', go: 'homework' });
+    const paid = (state.payments || []).some(x => x.month === monthKey() && isMonthly(x));
+    if (!p.feesExempt && !paid) slides.push({ title: 'Fees', text: `${monthName(monthKey())} fees aren’t paid yet`, art: '<span class="hero-kanji">£</span>', go: 'pay' });
+  }
+  return slides;
+}
+function drawHero() {
+  const slides = heroSlides();
+  const box = $('#hero-slides');
+  const was = Math.round(box.scrollLeft / Math.max(box.clientWidth, 1));
+  box.innerHTML = slides.map(sl => `<button type="button" class="hero-slide" data-go="${sl.go}">
+      <span class="hero-text"><b>${sl.title}</b><span>${sl.text} <span aria-hidden="true">›</span></span></span>
+      <span class="hero-art">${sl.art}</span></button>`).join('');
+  $('#hero-dots').innerHTML = slides.length > 1 ? slides.map((_, i) => `<button type="button" aria-label="Highlight ${i + 1}" data-dot="${i}"${i === Math.min(was, slides.length - 1) ? ' aria-current="true"' : ''}></button>`).join('') : '';
+  box.scrollLeft = Math.min(was, slides.length - 1) * box.clientWidth;
+  clearInterval(heroTimer);
+  if (slides.length > 1 && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    heroTimer = setInterval(() => {
+      if (state.view !== 'home' || document.hidden) return;
+      const i = (Math.round(box.scrollLeft / box.clientWidth) + 1) % slides.length;
+      box.scrollTo({ left: i * box.clientWidth, behavior: 'smooth' });
+    }, 6000);
+  }
+}
+$('#hero-slides').addEventListener('scroll', () => {
+  const box = $('#hero-slides');
+  const i = Math.round(box.scrollLeft / Math.max(box.clientWidth, 1));
+  $$('#hero-dots button').forEach((d, j) => d.toggleAttribute('aria-current', i === j));
+}, { passive: true });
+$('#hero-dots').addEventListener('click', e => {
+  const d = e.target.closest('[data-dot]');
+  if (d) $('#hero-slides').scrollTo({ left: +d.dataset.dot * $('#hero-slides').clientWidth, behavior: 'smooth' });
+});
+
 function drawHome() {
   if (!state.profile) return;
   const p = state.profile;
-  const hour = new Date().getHours();
-  $('#home-date').textContent = longDate(todayKey());
-  $('.pay-cta').hidden = !!p.feesExempt;
-  $('#home-greeting').textContent = (hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening') + ', ' + p.name.split(' ')[0] + '.';
+  $('.quick-pay').hidden = !!p.feesExempt;
+  $('#hero-dojo').innerHTML = `${esc(p.dojo === 'epping' ? 'Epping' : p.dojo === 'both' ? 'Ilford & Epping' : 'Ilford')} <span aria-hidden="true">›</span>`;
+  $('#side-name').textContent = p.name || '';
+  $('#side-belt').textContent = GRADES[p.grade] || '';
+  drawHero();
 
   const days = (state.cal && state.cal.days) || {};
   const next = upcoming(days, p, 7);
   const nextClass = next.find(d => d.type === 'training' || d.type === 'blackbelt' || d.type === 'grading');
   const closedSoon = next.find(d => d.type === 'closed' && (!nextClass || d.key < nextClass.key));
+  const calIcon = '<span class="sched-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M8 14h2M12 14h2M16 14h0M8 17h2M12 17h2"/></svg></span>';
   $('#next-card').innerHTML = nextClass
-    ? `<div class="next-when"><strong>${whenText(nextClass.key)}</strong><span>${longDate(nextClass.key)}</span></div>
-       <div class="next-what"><span class="swatch t-${nextClass.type}"></span><div><b>${TYPES[nextClass.type].label}</b><small>${esc(nextClass.note || TYPES[nextClass.type].note)}</small></div></div>
-       ${closedSoon ? `<p class="next-warn">Heads up: the dojo is closed on ${shortDate(closedSoon.key)}.</p>` : ''}`
-    : `<div class="next-when"><strong>No dates left this year</strong><span>The ${state.year + 1} calendar will appear here once it’s published.</span></div>`;
-
-  $('#home-upcoming').innerHTML = next.length
-    ? next.map(d => `<li><span class="swatch t-${d.type || 'note'}"></span><div><b>${d.type ? TYPES[d.type].label : 'Note'}</b><small>${esc(d.note || '')}</small></div><time>${shortDate(d.key)}<small>${whenText(d.key)}</small></time></li>`).join('')
-    : '<li class="muted">Nothing coming up.</li>';
+    ? `${calIcon}<span class="sched-text"><b>${whenText(nextClass.key)}: ${TYPES[nextClass.type].label}</b><small>${esc(nextClass.note || TYPES[nextClass.type].note)}${closedSoon ? ` · Closed ${shortDate(closedSoon.key)}` : ''}</small></span><span class="sched-go" aria-hidden="true">›</span>`
+    : `${calIcon}<span class="sched-text"><b>No dates left this year</b><small>The ${state.year + 1} calendar will appear here once it’s published.</small></span><span class="sched-go" aria-hidden="true">›</span>`;
+  $('#home-upcoming').innerHTML = next.filter(d => d !== nextClass).slice(0, 4)
+    .map(d => `<li><span class="swatch t-${d.type || 'note'}"></span><div><b>${d.type ? TYPES[d.type].label : 'Note'}</b><small>${esc(d.note || '')}</small></div><time>${shortDate(d.key)}<small>${whenText(d.key)}</small></time></li>`).join('');
 
   if (p.role !== 'student') {
     $('#home-notices').innerHTML = '<div class="card pending-mini"><b>Waiting for Sensei to accept you.</b> Notices and messages from Sensei will show here once you’re accepted.</div>';
@@ -573,6 +637,17 @@ function drawHome() {
   ].sort((a, b) => b.at - a.at).slice(0, 2);
   $('#home-notices').innerHTML = latest.length ? latest.map(i => i.html).join('') : '<p class="muted">Nothing from Sensei yet.</p>';
 }
+
+// Side menu and the round Message Sensei button.
+$('#menu-open').addEventListener('click', () => $('#side-menu').showModal());
+$('#menu-close').addEventListener('click', () => $('#side-menu').close());
+$('#side-menu').addEventListener('click', e => { if (e.target.closest('[data-go], a, [data-signout]') || e.target === $('#side-menu')) $('#side-menu').close(); });
+$('#dock-sensei').addEventListener('click', () => {
+  state.channel = 'sensei';
+  show('menu');
+  history.replaceState(null, '', '#menu');
+  setTimeout(() => $('#chat-text') && $('#chat-text').focus(), 300);
+});
 
 // ---- calendar ----
 async function drawCalendar(scroll) {

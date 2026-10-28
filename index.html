@@ -70,23 +70,48 @@
 
   <!-- Home -->
   <section class="view" id="view-home" hidden>
-    <p class="eyebrow" id="home-date"></p>
-    <h1 class="greeting" id="home-greeting"></h1>
-    <div class="card next-card" id="next-card"></div>
-    <button type="button" class="card pay-cta" data-go="pay"><span class="pay-cta-icon" aria-hidden="true">£</span><span><b>Pay fees</b><small>Monthly fees, membership and gradings with PayPal</small></span><span aria-hidden="true">→</span></button>
-    <button type="button" class="card pay-cta medal-cta" data-go="medals"><span class="pay-cta-icon" aria-hidden="true">🏅</span><span><b>My medals <span class="count-pill" id="medal-count" hidden></span></b><small>Medals and awards from Sensei</small></span><span aria-hidden="true">→</span></button>
-    <button type="button" class="card pay-cta lic-cta" data-go="licence"><span class="pay-cta-icon" aria-hidden="true">帯</span><span><b>My licence</b><small>Your membership details and belt record</small></span><span aria-hidden="true">→</span></button>
-    <div class="home-grid">
-      <div>
-        <div class="card-head"><h2>Coming up for you</h2><button class="linkish" data-go="calendar">Full calendar →</button></div>
-        <ol class="upcoming" id="home-upcoming"></ol>
+    <div class="hero">
+      <div class="hero-top">
+        <button type="button" class="hero-round" id="menu-open" aria-label="Menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg></button>
+        <button type="button" class="hero-pill" data-go="profile" id="hero-dojo">Ilford <span aria-hidden="true">›</span></button>
       </div>
-      <div>
-        <div class="card-head"><h2>Latest from Sensei</h2><button class="linkish" data-go="menu">EmptyHands chats →</button></div>
-        <div id="home-notices"></div>
+      <div class="hero-slides" id="hero-slides" aria-roledescription="carousel"></div>
+      <div class="hero-dots" id="hero-dots"></div>
+    </div>
+    <div class="sheet-body">
+      <div class="quick-row">
+        <button type="button" class="quick-card quick-pay" data-go="pay"><span class="quick-icon">£</span><b>Pay<br>fees</b></button>
+        <button type="button" class="quick-card" data-go="medals"><span class="quick-icon">🏅<span class="count-pill" id="medal-count" hidden></span></span><b>My<br>medals</b></button>
+        <button type="button" class="quick-card" data-go="licence"><span class="quick-icon">帯</span><b>My<br>licence</b></button>
+        <button type="button" class="quick-card" data-go="calendar"><span class="quick-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><b>View<br>calendar</b></button>
+        <button type="button" class="quick-card" data-go="syllabus"><span class="quick-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M9 7h6M9 11h5"/></svg></span><b>Karate<br>syllabus</b></button>
+        <button type="button" class="quick-card" data-go="homework"><span class="quick-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="m9 11 2 2 4-4M9 17h6"/></svg></span><b>My<br>homework</b></button>
       </div>
+
+      <h2 class="sec-title">My schedule</h2>
+      <button type="button" class="sched-card" data-go="calendar" id="next-card"></button>
+      <ol class="upcoming upcoming--compact" id="home-upcoming"></ol>
+
+      <h2 class="sec-title">Latest from Sensei <button class="linkish" data-go="menu">See all</button></h2>
+      <div id="home-notices"></div>
+
+      <h2 class="sec-title sec-title--brand">Explore</h2>
+      <div class="explore-row" id="explore"></div>
     </div>
   </section>
+
+  <!-- Side menu (from the round button on Home) -->
+  <dialog id="side-menu" class="side-menu" aria-label="Menu">
+    <div class="side-head"><img src="assets/img/logo.png" alt="" width="48" height="48"><div><b id="side-name"></b><small id="side-belt"></small></div>
+      <button type="button" class="hero-round" id="menu-close" aria-label="Close menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
+    <nav class="side-links">
+      <button data-go="home">Home</button><button data-go="calendar">Calendar</button><button data-go="menu">EmptyHands chats</button>
+      <button data-go="homework">Homework</button><button data-go="syllabus">Syllabus</button><button data-go="pay">Pay fees</button>
+      <button data-go="medals">My medals</button><button data-go="licence">My licence</button><button data-go="profile">Profile &amp; notifications</button>
+      <a href="https://rauf-mushtaq.github.io/emptyhands/" target="_blank" rel="noopener">EmptyHands website</a>
+    </nav>
+    <button type="button" class="btn btn--ghost btn--block" data-signout>Sign out</button>
+  </dialog>
 
   <!-- Calendar -->
   <section class="view" id="view-calendar" hidden>
@@ -236,13 +261,15 @@
   </section>
 </main>
 
-<nav class="tabbar" id="tabbar" aria-label="App" hidden>
+<div class="dock" id="tabbar" hidden>
+<nav class="tabbar" aria-label="App">
   <button data-go="home" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Home</button>
   <button data-go="calendar"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Calendar</button>
   <button data-go="menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>Chats<span class="badge" id="badge" hidden></span></button>
   <button data-go="homework"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="m9 11 2 2 4-4M9 17h6"/></svg>Homework<span class="badge" id="hw-badge" hidden></span></button>
-  <button data-go="syllabus"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M9 7h6M9 11h5"/></svg>Syllabus</button>
 </nav>
+<button type="button" class="dock-action" id="dock-sensei" aria-label="Message Sensei"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M12 8v5M9.5 10.5h5"/></svg></button>
+</div>
 
 <dialog id="day-dialog" class="sheet">
   <form method="dialog">
