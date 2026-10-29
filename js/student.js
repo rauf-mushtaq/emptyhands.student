@@ -6,7 +6,7 @@ import {
   $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar, messageHTML, wireEdits, editing, licenceHTML, MEDALS, medalHTML,
   calendarYears, isRelevant, noticeIsFor, homeworkIsFor, myAudiences, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
   toast, busy, registerSW, DEFAULT_FEES, FEE_GROUPS, feeLevel, money, paypalLink,
-  monthKey, monthName, isMonthly, PAY_METHODS,
+  monthKey, monthName, isMonthly, PAY_METHODS, keyOf,
 } from './common.js';
 
 const VIEWS = ['home', 'calendar', 'menu', 'homework', 'syllabus', 'pay', 'licence', 'medals', 'attendance', 'profile'];
@@ -201,7 +201,7 @@ async function enter(user) {
   state.stops.push(api.watchMyPayments(user.uid, list => { state.payments = list; if (state.view === 'pay') drawPayStatus(); }));
   state.stops.push(api.watchLicence(user.uid, l => { state.licence = l; if (state.view === 'licence') drawLicence(); }));
   state.stops.push(api.watchMyAwards(user.uid, list => onList('awards', list)));
-  state.stops.push(api.watchMyAttendance(user.uid, list => { state.attended = list; if (state.view === 'attendance') drawAttendance(); }));
+  state.stops.push(api.watchMyAttendance(user.uid, list => { state.attended = list; if (state.view === 'attendance') drawAttendance(); if (state.view === 'calendar') drawCalendar(); }));
   if (p.role === 'student') startMember();
   const start = location.hash.slice(1);
   show(VIEWS.includes(start) ? start : start === 'notices' ? 'menu' : 'home');
@@ -680,8 +680,9 @@ async function drawCalendar(scroll) {
   $('#cal-pdf').hidden = !(cal && cal.pdf);
   if (!cal) return;
   if (cal.pdf) $('#cal-pdf').href = cal.pdf;
+  watchRegisterYear();
   renderYear($('#cal-grid'), state.year, {
-    days: cal.days, profile: state.profile, onlyMine: $('#only-mine').checked, onDay: openDay,
+    days: cal.days, profile: state.profile, onlyMine: $('#only-mine').checked, onDay: openDay, marks: attendanceMarks(),
   });
   drawKeyDates(cal.days);
   $('#cal-timings').innerHTML = '<h2>Class times</h2><ul>' + cal.timings.map(t => {
@@ -725,8 +726,25 @@ $('#ics').addEventListener('click', async () => {
   download(name, ics, 'text/calendar');
 });
 
+// ✓ on register days they attended, ✗ on register days since they joined that they missed.
+function watchRegisterYear() {
+  if (!state.member || state.regYear === state.year) return;
+  if (state.regStop) state.regStop();
+  state.regYear = state.year;
+  state.regDays = [];
+  state.regStop = api.watchRegisterDays(state.year, list => { state.regDays = list; if (state.view === 'calendar') drawCalendar(); });
+  state.stops.push(() => { if (state.regStop) state.regStop(); state.regStop = null; state.regYear = null; });
+}
+function attendanceMarks() {
+  const here = new Set(state.attended || []);
+  const joined = state.profile && state.profile.createdAt ? keyOf(new Date(state.profile.createdAt)) : '';
+  const marks = {};
+  (state.regDays || []).forEach(d => { if (!here.has(d) && d >= joined) marks[d] = 'away'; });
+  here.forEach(d => { marks[d] = 'here'; });
+  return marks;
+}
 function openDay(key) {
-  const entry = state.cal.days[key] || {};
+  const entry = (state.cal && state.cal.days[key]) || {};
   $('#day-when').textContent = whenText(key);
   $('#day-title').textContent = longDate(key);
   const t = entry.type && TYPES[entry.type];
@@ -735,6 +753,10 @@ function openDay(key) {
     : '';
   $('#day-note').textContent = entry.note || '';
   $('#day-note').hidden = !entry.note;
+  const mark = attendanceMarks()[key];
+  $('#day-att').hidden = !mark;
+  $('#day-att').className = 'day-att ' + (mark === 'here' ? 'is-here' : 'is-away');
+  $('#day-att').textContent = mark === 'here' ? '✓ You were at this class' : '✗ You weren’t marked present at this class';
   $('#day-dialog').showModal();
 }
 
