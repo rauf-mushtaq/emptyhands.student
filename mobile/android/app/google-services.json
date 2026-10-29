@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "596775265118",
+    "project_id": "emptyhands-student-portal",
+    "storage_bucket": "emptyhands-student-portal.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:596775265118:android:71496929a469fbcad6a5cf",
+        "android_client_info": {
+          "package_name": "uk.co.emptyhands.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBf3EfgXoCBWZZx9yHhBeZgCwOQR_F3bcQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
