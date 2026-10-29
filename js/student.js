@@ -472,11 +472,6 @@ async function drawPay() {
   const paypal = settings && settings.paypal;
   const track = PAYPAL_AUTO_TRACK && { uid: state.user.uid, notifyUrl: `https://europe-west2-${firebaseConfig.projectId}.cloudfunctions.net/paypalIpn` };
   drawPayStatus();
-  if (p.feesExempt) {
-    $('#pay-intro').innerHTML = `<b>${esc(p.name)} doesn’t need to pay fees.</b> Sensei has marked this account as exempt. If you think that’s wrong, please ask Sensei.`;
-    $('#fee-list').innerHTML = '';
-    return;
-  }
   const level = feeLevel(p.grade);
   // Students can only pay their own monthly fee (for Karate, the one for their belt level) and
   // drop-in / pay-per-lesson fees, for the classes they attend. Other fees stay in the coach panel.
@@ -485,6 +480,7 @@ async function drawPay() {
   $('#pay-intro').innerHTML = paypal
     ? `<b>Choose per lesson or per month.</b> PayPal opens with the amount filled in — pay with a card or your PayPal account. Paying for <b>${esc(p.name)}</b> (${esc(GRADES[p.grade] || 'No belt')}).`
     : 'Online payment isn’t set up yet — please pay Sensei at the dojo for now.';
+  if (p.feesExempt) $('#pay-intro').innerHTML = `<b>Sensei has marked ${esc(p.name)} as exempt, so you don’t need to pay fees.</b> You can still pay below if you want to.<br>` + $('#pay-intro').innerHTML;
 
   // One card per class, with two choices: per lesson, and per month at the student's level.
   const option = (f, label, sub) => !f ? '' : paypal
@@ -628,7 +624,6 @@ $('#hero-dots').addEventListener('click', e => {
 function drawHome() {
   if (!state.profile) return;
   const p = state.profile;
-  $('.quick-pay').hidden = !!p.feesExempt;
   $('#hero-dojo').innerHTML = `${esc(p.dojo === 'epping' ? 'Epping' : p.dojo === 'both' ? 'Ilford & Epping' : 'Ilford')} <span aria-hidden="true">›</span>`;
   $('#side-name').textContent = p.name || '';
   $('#side-belt').textContent = GRADES[p.grade] || '';
