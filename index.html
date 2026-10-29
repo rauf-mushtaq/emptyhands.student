@@ -82,6 +82,7 @@
       <div class="quick-row">
         <button type="button" class="quick-card quick-pay" data-go="pay"><span class="quick-icon">£</span><b>Pay<br>fees</b></button>
         <button type="button" class="quick-card" data-go="medals"><span class="quick-icon">🏅<span class="count-pill" id="medal-count" hidden></span></span><b>My<br>medals</b></button>
+        <button type="button" class="quick-card" data-go="attendance"><span class="quick-icon">✓</span><b>My<br>attendance</b></button>
         <button type="button" class="quick-card" data-go="licence"><span class="quick-icon">帯</span><b>My<br>licence</b></button>
         <button type="button" class="quick-card" data-go="calendar"><span class="quick-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></span><b>View<br>calendar</b></button>
         <button type="button" class="quick-card" data-go="syllabus"><span class="quick-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h12v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M9 7h6M9 11h5"/></svg></span><b>Karate<br>syllabus</b></button>
@@ -107,7 +108,7 @@
     <nav class="side-links">
       <button data-go="home">Home</button><button data-go="calendar">Calendar</button><button data-go="menu">EmptyHands chats</button>
       <button data-go="homework">Homework</button><button data-go="syllabus">Syllabus</button><button data-go="pay">Pay fees</button>
-      <button data-go="medals">My medals</button><button data-go="licence">My licence</button><button data-go="profile">Profile &amp; notifications</button>
+      <button data-go="attendance">My attendance</button><button data-go="medals">My medals</button><button data-go="licence">My licence</button><button data-go="profile">Profile &amp; notifications</button>
       <a href="https://rauf-mushtaq.github.io/emptyhands/" target="_blank" rel="noopener">EmptyHands website</a>
     </nav>
     <button type="button" class="btn btn--ghost btn--block" data-signout>Sign out</button>
@@ -217,6 +218,14 @@
     <div class="fees" id="fee-list"></div>
     <section id="pay-history-wrap" hidden><h2>Your payments</h2><ul class="pay-history" id="pay-history"></ul></section>
     <p class="muted fine">Payments go straight to EmptyHands through PayPal, with the student’s name attached so Sensei knows who has paid. You don’t need a PayPal account — you can pay by debit or credit card. Afterwards, tap “Back to EmptyHands” to return here. Classes can’t be carried forward.</p>
+  </section>
+
+  <!-- My attendance: from Sensei's register -->
+  <section class="view" id="view-attendance" hidden>
+    <div class="view-head"><div><p class="eyebrow">Keep it up!</p><h1>My attendance</h1></div></div>
+    <div class="att-stats" id="att-stats"></div>
+    <h2 class="sec-title">Classes attended</h2>
+    <div id="att-list"></div>
   </section>
 
   <!-- My medals: awarded by Sensei -->

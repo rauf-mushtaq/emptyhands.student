@@ -9,7 +9,7 @@ import {
   monthKey, monthName, isMonthly, PAY_METHODS,
 } from './common.js';
 
-const VIEWS = ['home', 'calendar', 'menu', 'homework', 'syllabus', 'pay', 'licence', 'medals', 'profile'];
+const VIEWS = ['home', 'calendar', 'menu', 'homework', 'syllabus', 'pay', 'licence', 'medals', 'attendance', 'profile'];
 const state = {
   user: null, profile: null, notices: [], thread: [], chat: null, cal: null,
   group: [], journal: [], homework: [], awards: [], channel: 'notices',
@@ -68,6 +68,7 @@ function show(id) {
   if (id === 'pay') drawPay();
   if (id === 'licence') drawLicence();
   if (id === 'medals') drawMedals();
+  if (id === 'attendance') drawAttendance();
   if (id === 'calendar') drawCalendar(true);
 }
 document.addEventListener('click', e => {
@@ -200,6 +201,7 @@ async function enter(user) {
   state.stops.push(api.watchMyPayments(user.uid, list => { state.payments = list; if (state.view === 'pay') drawPayStatus(); }));
   state.stops.push(api.watchLicence(user.uid, l => { state.licence = l; if (state.view === 'licence') drawLicence(); }));
   state.stops.push(api.watchMyAwards(user.uid, list => onList('awards', list)));
+  state.stops.push(api.watchMyAttendance(user.uid, list => { state.attended = list; if (state.view === 'attendance') drawAttendance(); }));
   if (p.role === 'student') startMember();
   const start = location.hash.slice(1);
   show(VIEWS.includes(start) ? start : start === 'notices' ? 'menu' : 'home');
@@ -892,4 +894,22 @@ function drawMedals() {
   $('#medal-count').textContent = list.length;
   $('#my-medals').innerHTML = list.length ? list.map(a => medalHTML(a)).join('')
     : '<div class="empty"><span aria-hidden="true">🏅</span><p>No medals yet. Keep training. Sensei awards medals for things like attendance, effort and great kata!</p></div>';
+}
+
+// ---- My attendance: the classes Sensei marked them present at ----
+function drawAttendance() {
+  const list = state.attended || [];
+  const month = monthKey();
+  const year = String(new Date().getFullYear());
+  const n = pre => list.filter(d => d.startsWith(pre)).length;
+  $('#att-stats').innerHTML = [
+    [n(month), monthName(month).replace(/ \d{4}$/, '')],
+    [n(year), 'This year'],
+    [list.length, 'All time'],
+  ].map(([v, l]) => `<div class="att-stat"><b>${v}</b><span>${esc(l)}</span></div>`).join('');
+  const byMonth = {};
+  list.forEach(d => (byMonth[d.slice(0, 7)] ||= []).push(d));
+  $('#att-list').innerHTML = list.length ? Object.entries(byMonth).map(([m, days]) => `<div class="card att-month"><div class="card-head"><b>${esc(monthName(m))}</b><span class="muted">${days.length} class${days.length === 1 ? '' : 'es'}</span></div>
+      <div class="chips">${days.map(d => `<span class="chip">✓ ${esc(shortDate(d))}</span>`).join('')}</div></div>`).join('')
+    : '<div class="empty"><span aria-hidden="true">✓</span><p>No classes recorded yet. When Sensei takes the register, your classes will appear here.</p></div>';
 }
