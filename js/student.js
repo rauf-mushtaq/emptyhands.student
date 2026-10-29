@@ -1,9 +1,9 @@
 import { backend, DEMO, isCoach, errorText } from './backend.js';
-import { COACH_URL, STUDENT_URL, SITE_URL, RECOMMENDED, PAYPAL_AUTO_TRACK, firebaseConfig } from './config.js';
+import { COACH_URL, STUDENT_URL, SITE_URL, OWNER_EMAILS, RECOMMENDED, PAYPAL_AUTO_TRACK, firebaseConfig } from './config.js';
 import { NATIVE, pushState, enablePush, onPushTap, shareFile } from './native.js';
 import { webPushReady, webPushToken } from './webpush.js';
 import {
-  $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar, messageHTML, wireEdits, editing, licenceHTML, MEDALS, medalHTML,
+  $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar, messageHTML, wireEdits, editing, licenceHTML, MEDALS, medalHTML, threadId, senseiList,
   calendarYears, isRelevant, noticeIsFor, homeworkIsFor, myAudiences, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
   toast, busy, registerSW, DEFAULT_FEES, FEE_GROUPS, feeLevel, money, paypalLink,
   monthKey, monthName, isMonthly, PAY_METHODS, keyOf,
@@ -134,7 +134,7 @@ function stopAll() {
   state.stops.forEach(stop => stop && stop());
   state.stops = [];
   state.member = false;
-  state.notices = []; state.thread = []; state.chat = null; state.seen = new Set();
+  state.notices = []; state.thread = []; state.chat = null; state.dms = {}; state.dmKey = 'all'; state.seen = new Set();
   state.group = []; state.journal = []; state.homework = []; state.payments = [];
   state.loaded = {}; state.prevRead = null;
   (state.groupStops || []).forEach(stop => stop()); state.groupStops = []; state.groupKey = '';
@@ -238,10 +238,10 @@ function startMember() {
   state.member = true;
   const uid = state.user.uid;
   watchGroups();
-  state.stops.push(api.watchThread(uid, list => onList('thread', list)));
+  watchSenseiChats();
   state.stops.push(api.watchChannel('group', list => onList('group', list)));
   state.stops.push(api.watchChannel('journal', list => onList('journal', list)));
-  state.stops.push(api.watchChat(uid, c => { state.chat = c; drawBadge(); }));
+
 }
 // Notices and homework depend on the student's groups (classes, dojo, belt), so these are
 // restarted whenever those change.
@@ -257,7 +257,33 @@ function watchGroups() {
 }
 
 function myNotices() { return state.notices.filter(n => noticeIsFor(n, state.profile)); }
-function coachMessages() { return state.thread.filter(m => m.from === 'coach'); }
+// Private chats: the shared one with every Sensei (key 'all') and one with each Sensei.
+// state.dms[key] = { msgs, chat }; state.dmKey is the one open in Message Sensei.
+async function watchSenseiChats() {
+  const uid = state.user.uid;
+  const doc = await api.getCoachSettings().catch(() => ({}));
+  if (!state.member || state.user.uid !== uid) return;
+  state.senseis = senseiList(OWNER_EMAILS, doc);
+  state.dms = {};
+  state.dmKey = state.dmKey || 'all';
+  ['all', ...state.senseis.map(x => x.key)].forEach(key => {
+    state.dms[key] = { msgs: [], chat: null };
+    const tid = threadId(uid, key);
+    state.stops.push(api.watchThread(tid, list => onList('thread:' + key, list)));
+    state.stops.push(api.watchChat(tid, c => { state.dms[key].chat = c; if (key === state.dmKey) state.chat = c; drawBadge(); drawPicker(); }));
+  });
+  drawPicker();
+}
+const dmUnread = key => { const d = (state.dms || {})[key]; return d ? d.msgs.filter(m => m.from === 'coach' && m.createdAt > ((d.chat && d.chat.studentReadAt) || 0)).length : 0; };
+function senseiName(key) { const s = (state.senseis || []).find(x => x.key === key); return s ? s.name : 'Sensei'; }
+function drawPicker() {
+  const box = $('#dm-pick');
+  if (!box) return;
+  box.hidden = state.channel !== 'sensei' || !(state.senseis || []).length;
+  box.innerHTML = [['all', 'All Sensei'], ...(state.senseis || []).map(x => [x.key, x.name])].map(([k, n]) =>
+    `<button type="button" class="chip" role="tab" data-dm="${esc(k)}" aria-selected="${k === state.dmKey}">${esc(n)}${dmUnread(k) && k !== state.dmKey ? '<span class="dot"></span>' : ''}</button>`).join('');
+}
+function coachMessages() { return Object.values(state.dms || {}).flatMap(d => d.msgs.filter(m => m.from === 'coach')); }
 function myHomework() { return state.homework.filter(h => homeworkIsFor(h, state.user.uid, state.profile)); }
 const isDone = h => !!(state.profile.homeworkDone || {})[h.id];
 
@@ -279,7 +305,13 @@ function onList(kind, list) {
   state[kind] = list;
   const fresh = item => !first && !state.seen.has(item.id);
   if (kind === 'notices') myNotices().forEach(n => fresh(n) && n.createdAt > (state.profile.lastRead || 0) ? announce(n.id, 'New notice from Sensei: ' + n.title, n.body) : state.seen.add(n.id));
-  else if (kind === 'thread') list.forEach(m => fresh(m) && m.from === 'coach' ? announce(m.id, 'Message from ' + (m.author || 'Sensei'), m.text) : state.seen.add(m.id));
+  else if (kind.startsWith('thread:')) {
+    const key = kind.slice(7);
+    if (state.dms && state.dms[key]) state.dms[key].msgs = list;
+    if (key === state.dmKey) state.thread = list;
+    list.forEach(m => fresh(m) && m.from === 'coach' ? announce(m.id, 'Message from ' + (m.author || 'Sensei'), m.text) : state.seen.add(m.id));
+    drawPicker();
+  }
   else if (kind === 'homework') myHomework().forEach(h => fresh(h) ? announce(h.id, 'New homework: ' + h.title, h.details || '') : state.seen.add(h.id));
   else if (kind === 'awards') list.forEach(a => fresh(a) ? announce(a.id, `${(MEDALS[a.medal] || MEDALS.star).icon} You’ve earned a medal: ${a.title}`, a.note || '') : state.seen.add(a.id));
   refresh();
@@ -300,7 +332,7 @@ const seenAt = ch => ((state.profile.seen || {})[ch]) || 0;
 function unreadIn(ch) {
   if (!state.member) return 0;
   if (ch === 'notices') return myNotices().filter(n => n.createdAt > (state.profile.lastRead || 0)).length;
-  if (ch === 'sensei') return coachMessages().filter(m => m.createdAt > ((state.chat && state.chat.studentReadAt) || 0)).length;
+  if (ch === 'sensei') return Object.keys(state.dms || {}).reduce((n, k) => n + dmUnread(k), 0);
   return state[ch].filter(m => m.uid !== state.user.uid && m.createdAt > seenAt(ch)).length;
 }
 function unread() { return ['notices', 'group', 'journal', 'sensei'].reduce((n, ch) => n + unreadIn(ch), 0); }
@@ -317,7 +349,7 @@ function drawBadge() {
 // Marks the open channel as read.
 async function markRead() {
   const ch = state.channel;
-  if (!state.member || !unreadIn(ch)) return;
+  if (!state.member || (ch === 'sensei' ? !dmUnread(state.dmKey) : !unreadIn(ch))) return;
   const uid = state.user.uid;
   state.prevRead = { ch, at: ch === 'notices' ? state.profile.lastRead || 0 : ch === 'sensei' ? (state.chat && state.chat.studentReadAt) || 0 : seenAt(ch) };
   try {
@@ -326,9 +358,10 @@ async function markRead() {
       drawBadge();
       await api.saveProfile(uid, { lastRead: state.profile.lastRead });
     } else if (ch === 'sensei') {
-      state.chat = { ...(state.chat || {}), studentReadAt: Date.now() };
-      drawBadge();
-      await api.markChatRead(uid, 'student');
+      const d = state.dms[state.dmKey];
+      d.chat = state.chat = { ...(d.chat || {}), studentReadAt: Date.now() };
+      drawBadge(); drawPicker();
+      await api.markChatRead(threadId(uid, state.dmKey), 'student');
     } else {
       state.profile.seen = { ...(state.profile.seen || {}), [ch]: Date.now() };
       drawBadge();
@@ -352,7 +385,7 @@ const CHANNELS = {
   notices: { intro: 'Notices from Sensei. Only Sensei can post here.' },
   group: { intro: 'Group chat for everyone at EmptyHands — students, parents and Sensei. Everyone in the group can see these messages.', placeholder: 'Message the group…' },
   journal: { intro: 'Your training journal: share what you practised, so Sensei and the group can see how you’re getting on.', placeholder: 'What did you practise today? e.g. Heian Shodan ×5, kihon 20 min' },
-  sensei: { intro: 'Private messages between you and Sensei. Nobody else can see these.', placeholder: 'Message Sensei…' },
+  sensei: { intro: 'Private messages between you and every Sensei. Choose a Sensei above to message just them.', placeholder: 'Message Sensei…' },
 };
 $('#rec-name').textContent = RECOMMENDED.name;
 $('#rec-about').textContent = RECOMMENDED.about;
@@ -388,9 +421,12 @@ function drawMenu() {
   if (pending) return;
   const ch = state.channel;
   $$('.channels [data-ch]').forEach(b => b.setAttribute('aria-selected', b.dataset.ch === ch));
-  $('#ch-intro').textContent = CHANNELS[ch].intro;
+  $('#ch-intro').textContent = ch !== 'sensei' || state.dmKey === 'all' ? CHANNELS[ch].intro
+    : `Private messages between you and ${senseiName(state.dmKey)} only.` + ((state.senseis || []).find(x => x.key === state.dmKey && x.head) ? '' : ' The head Sensei can also read them, to keep everyone safe.');
+  drawPicker();
   $('#form-chat').hidden = ch === 'notices';
   $('#chat-text').placeholder = CHANNELS[ch].placeholder || '';
+  if (ch === 'sensei') $('#chat-text').placeholder = 'Message ' + (state.dmKey === 'all' ? 'all Sensei' : senseiName(state.dmKey)) + '…';
   $('#journal-phrases').hidden = ch !== 'journal';
   const since = state.prevRead && state.prevRead.ch === ch ? state.prevRead.at : null;
   const isNew = at => since !== null && at > since;
@@ -422,7 +458,7 @@ $('#menu-feed').addEventListener('click', async e => {
 });
 wireEdits($('#menu-feed'), {
   find: id => (state.channel === 'sensei' ? state.thread : state[state.channel] || []).find(m => m.id === id),
-  save: (id, text) => state.channel === 'sensei' ? api.editMessage(state.user.uid, id, text) : api.editChannelMessage(state.channel, id, text),
+  save: (id, text) => state.channel === 'sensei' ? api.editMessage(threadId(state.user.uid, state.dmKey), id, text) : api.editChannelMessage(state.channel, id, text),
   redraw: () => drawMenu(),
   fail: err => toast(errorText(err), 'bad'),
 });
@@ -456,7 +492,7 @@ $('#form-chat').addEventListener('submit', async e => {
   const m = { text, from: 'student', author: $('#chat-from').value, uid: state.user.uid };
   await busy(e.target.querySelector('[type=submit]'), async () => {
     try {
-      if (ch === 'sensei') await api.sendMessage(state.user.uid, state.profile.name, m);
+      if (ch === 'sensei') await api.sendMessage(threadId(state.user.uid, state.dmKey), state.profile.name, m);
       else await api.postChannel(ch, m);
       chatText.value = ''; chatText.style.height = 'auto';
       scrollFeed();
@@ -935,3 +971,13 @@ function drawAttendance() {
       <div class="chips">${days.map(d => `<span class="chip">✓ ${esc(shortDate(d))}</span>`).join('')}</div></div>`).join('')
     : '<div class="empty"><span aria-hidden="true">✓</span><p>No classes recorded yet. When Sensei takes the register, your classes will appear here.</p></div>';
 }
+
+$('#dm-pick').addEventListener('click', e => {
+  const b = e.target.closest('[data-dm]');
+  if (!b || b.dataset.dm === state.dmKey) return;
+  state.dmKey = b.dataset.dm;
+  const d = state.dms[state.dmKey];
+  state.thread = d.msgs; state.chat = d.chat;
+  editing.id = null; state.prevRead = null;
+  drawMenu(); markRead(); scrollFeed();
+});
