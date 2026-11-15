@@ -63,7 +63,7 @@ function show(id) {
   $('#top-user').toggleAttribute('aria-current', id === 'profile');
   document.body.classList.remove('in-chat');
   document.body.classList.toggle('on-home', id === 'home');
-  if (id === 'menu') { drawMenu(); markRead(); scrollFeed(); } else scrollTo(0, 0);
+  if (id === 'menu') { goToUnread(); drawMenu(); markRead(); scrollFeed(); } else scrollTo(0, 0);
   if (id === 'homework') drawHomework();
   if (id === 'pay') drawPay();
   if (id === 'licence') drawLicence();
@@ -411,7 +411,31 @@ function drawBadge() {
   $('#hw-badge').textContent = todo > 9 ? '9+' : todo;
   document.title = (n ? `(${n}) ` : '') + 'EmptyHands · Student app';
 }
-// Marks the open channel as read.
+// Opening Chats: if the open channel has nothing new but another one does (another class, the
+// journal, notices or a Sensei chat), go to the one with the newest unread message, so reading it
+// clears the Chats badge.
+function newest(list) { return list.reduce((t, m) => Math.max(t, m.createdAt || 0), 0); }
+function goToUnread() {
+  if (!state.member || !unread()) return;
+  const here = chId();
+  if (here === 'sensei' ? dmUnread(state.dmKey) : here === 'notices' ? unreadIn('notices') : here && unreadOf(here)) return;
+  const found = [];
+  found.push({ t: newest(myNotices().filter(n => n.createdAt > (state.profile.lastRead || 0))), ch: 'notices' });
+  Object.entries(state.dms || {}).forEach(([k, d]) => found.push({ t: newest(d.msgs.filter(m => m.from === 'coach' && m.createdAt > ((d.chat && d.chat.studentReadAt) || 0))), ch: 'sensei', dm: k }));
+  ['group', 'journal'].forEach(tab => classesFor(state.profile).forEach(c => {
+    const id = `${tab}-${c}`;
+    found.push({ t: newest((state[id] || []).filter(m => m.uid !== state.user.uid && !isBlocked(m) && m.createdAt > seenAt(id))), ch: tab, cls: c });
+  }));
+  const best = found.filter(x => x.t).sort((a, b) => b.t - a.t)[0];
+  if (!best) return;
+  state.channel = best.ch;
+  if (best.cls) state.cls = best.cls;
+  if (best.dm && best.dm !== state.dmKey) { state.dmKey = best.dm; const d = state.dms[best.dm]; state.thread = d.msgs; state.chat = d.chat; }
+  editing.id = null; state.prevRead = null;
+}
+
+// Marks the open channel as read. "Read up to" is never earlier than the newest message there, so a
+// phone whose clock is a little behind still clears it.
 async function markRead() {
   const ch = chId();
   if (!ch || !state.member || (ch === 'sensei' ? !dmUnread(state.dmKey) : ch === 'notices' ? !unreadIn(ch) : !unreadOf(ch))) return;
@@ -424,11 +448,12 @@ async function markRead() {
       await api.saveProfile(uid, { lastRead: state.profile.lastRead });
     } else if (ch === 'sensei') {
       const d = state.dms[state.dmKey];
-      d.chat = state.chat = { ...(d.chat || {}), studentReadAt: Date.now() };
+      const at = Math.max(Date.now(), newest(d.msgs));
+      d.chat = state.chat = { ...(d.chat || {}), studentReadAt: at };
       drawBadge(); drawPicker();
-      await api.markChatRead(threadId(uid, state.dmKey), 'student');
+      await api.markChatRead(threadId(uid, state.dmKey), 'student', at);
     } else {
-      state.profile.seen = { ...(state.profile.seen || {}), [ch]: Date.now() };
+      state.profile.seen = { ...(state.profile.seen || {}), [ch]: Math.max(Date.now(), newest(state[ch] || [])) };
       drawBadge(); drawGroupPick();
       await api.saveProfile(uid, { seen: state.profile.seen });
     }
