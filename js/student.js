@@ -5,7 +5,7 @@ import { webPushReady, webPushToken } from './webpush.js';
 import {
   $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar, messageHTML, wireEdits, editing, licenceHTML, MEDALS, medalHTML, threadId, senseiList,
   calendarYears, isRelevant, noticeIsFor, homeworkIsFor, myAudiences, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
-  toast, busy, registerSW, DEFAULT_FEES, FEE_GROUPS, feeLevel, money, paypalLink,
+  toast, busy, registerSW, DEFAULT_FEES, FEE_GROUPS, feeLevel, money, paypalLink, agreedFee,
   monthKey, monthName, isMonthly, PAY_METHODS, keyOf,
 } from './common.js';
 
@@ -245,7 +245,8 @@ function onProfile(p) {
   fillProfile($('#form-profile'), state.profile);
   drawBlocked();
   if (state.member && state.view === 'menu') drawMenu();
-  if (state.view === 'pay' && !!p.feesExempt !== !!state.wasExempt) drawPay();
+  if (state.view === 'pay' && (!!p.feesExempt !== !!state.wasExempt || p.monthlyFee !== state.wasFee || p.grade !== oldBelt)) drawPay();
+  state.wasFee = p.monthlyFee;
   state.wasExempt = !!p.feesExempt;
   if (p.grade && oldBelt && p.grade !== oldBelt) {
     toast('Sensei has updated your belt to ' + (GRADES[p.grade] || p.grade) + (p.grade === 'dan' ? ' — congratulations!' : '.'));
@@ -626,9 +627,12 @@ async function drawPay() {
   $('#fee-list').innerHTML = classes.map(g => {
     const lesson = lessonFee(fees, g);
     const month = monthFee(fees, g, level);
-    const monthly = level === 'application' && g === 'karate'
-      ? `<div class="fee-option is-application"><span class="fee-option-label">Per month</span><b>On application</b><small>Brown belt and above — please speak to Sensei about your monthly fee.</small></div>`
-      : option(month, 'Per month', month && month.level ? `${levelName} level` : 'Monthly');
+    // Brown belt and above: the monthly fee Sensei agreed with this student, once it's set.
+    const agreed = level === 'application' && g === 'karate' ? agreedFee(p) : null;
+    const monthly = agreed ? option(agreed, 'Per month', 'Agreed with Sensei')
+      : level === 'application' && g === 'karate'
+        ? `<div class="fee-option is-application"><span class="fee-option-label">Per month</span><b>On application</b><small>Brown belt and above — please speak to Sensei about your monthly fee.</small></div>`
+        : option(month, 'Per month', month && month.level ? `${levelName} level` : 'Monthly');
     if (!lesson && !monthly) return '';
     return `<section class="card fee-class"><h2>${FEE_GROUPS[g]}</h2><div class="fee-options">${option(lesson, 'Per lesson', 'Pay as you go')}${monthly}</div></section>`;
   }).join('') || '<p class="muted">There are no fees set up for your classes yet. Please ask Sensei how to pay.</p>';
