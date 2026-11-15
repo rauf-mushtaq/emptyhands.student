@@ -31,7 +31,7 @@
     <li><b>Account details you give us:</b> email address, password (stored only in encrypted form by our sign-in provider), the student’s name, an optional parent or guardian name and phone number, the classes they attend, their dojo and their karate belt.</li>
     <li><b>Messages and posts:</b> what you write in the group chat, the training journal and private messages to Sensei (including any changes you make), and which homework you’ve ticked off.</li>
     <li><b>Training records that Sensei keep:</b> the classes you attended (the register), medals Sensei award you, and your student licence: home address, membership number, start and renewal dates, and your belt record (grading dates, results and examiners).</li>
-    <li><b>Fees:</b> what you’ve paid and when (amount, which fee, month and how it was paid). If you pay with PayPal, PayPal tells us the amount, the transaction number and the payer’s name and PayPal email. We never see card details.</li>
+    <li><b>Fees:</b> what you’ve paid and when (amount, which fee, month and how it was paid). If you pay by card, Apple Pay or Google Pay, our payment provider Stripe tells us the amount, the payment reference and the payer’s name and email; if you pay with PayPal, PayPal tells us the amount, the transaction number and the payer’s name and PayPal email. We never see card details.</li>
     <li><b>Safety:</b> when you agreed to the community rules, anyone you’ve blocked, and any reports you make (your name, the message and why you reported it).</li>
     <li><b>App settings and activity:</b> when you last read each channel (to show what’s new) and whether you want class reminders.</li>
     <li><b>Notification token:</b> if you turn on notifications, a code from Apple or Google that lets us send notices to your phone.</li>
@@ -54,6 +54,7 @@
   <ul>
     <li><b>Google Firebase:</b> sign-in (Firebase Authentication), the app’s data (Cloud Firestore, in London), the services that send notifications and reminders (Cloud Functions, in London) and notifications (Firebase Cloud Messaging). Google may process some data outside the UK under its standard data protection terms.</li>
     <li><b>Apple Push Notification service</b>, for notifications on iPhone and iPad.</li>
+    <li><b>Stripe</b>, which takes card, Apple Pay and Google Pay payments on its own secure payment page, only if you choose to pay that way. We send it the student’s name, the fee and the account’s email address (for your receipt).</li>
     <li><b>PayPal</b>, only if you choose to pay with it, under PayPal’s own privacy policy.</li>
   </ul>
 

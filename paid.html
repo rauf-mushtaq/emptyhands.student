@@ -15,13 +15,41 @@
 </style>
 </head>
 <body>
-<!-- PayPal brings people here after paying (or cancelling) in the EmptyHands phone app. -->
+<!-- Stripe (card, Apple Pay, Google Pay) and PayPal bring people here after paying (or cancelling) in the EmptyHands phone app. -->
 <main class="app-main paid">
   <div class="kanji" aria-hidden="true">謝</div>
-  <h1>Back to the app</h1>
-  <p>If you finished paying, thank you! Your payment goes straight to EmptyHands and shows on the <b>Pay fees</b> page in the app within a minute or two.</p>
+  <h1 id="paid-title">Back to the app</h1>
+  <p id="paid-text">If you finished paying, thank you! Your payment goes straight to EmptyHands and shows on the <b>Pay fees</b> page in the app within a minute or two.</p>
   <a class="btn btn--seal btn--block" href="uk.co.emptyhands.app://pay">Open the EmptyHands app</a>
   <p class="muted fine">If the button doesn’t open it, close this page and open the EmptyHands app yourself.</p>
 </main>
+<script>
+// After a card / Apple Pay / Google Pay payment, record it straight away (see cardPayments).
+(function () {
+  var q = new URLSearchParams(location.search), session = q.get('card');
+  var title = document.getElementById('paid-title'), text = document.getElementById('paid-text');
+  if (q.get('cancelled')) {
+    title.textContent = 'Payment cancelled';
+    text.textContent = 'Nothing was taken. You can go back to the app and try again whenever you like.';
+    return;
+  }
+  if (!session) return;
+  text.textContent = 'Checking your payment…';
+  fetch('https://europe-west2-emptyhands-student-portal.cloudfunctions.net/cardPayments', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'confirm', session: session })
+  }).then(function (r) { return r.json(); }).then(function (out) {
+    if (out.paid) {
+      title.textContent = 'Thank you!';
+      text.textContent = '£' + Number(out.amount).toFixed(2) + ' paid for ' + out.feeName + '. It goes straight to EmptyHands and already shows on the Pay fees page in the app.';
+    } else {
+      title.textContent = 'Payment not finished';
+      text.textContent = 'The payment didn’t go through, so nothing was taken. You can go back to the app and try again.';
+    }
+  }).catch(function () {
+    title.textContent = 'Thank you!';
+    text.textContent = 'If you finished paying, your payment shows on the Pay fees page in the app within a few minutes.';
+  });
+})();
+</script>
 </body>
 </html>

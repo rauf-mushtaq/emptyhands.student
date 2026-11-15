@@ -6,7 +6,7 @@ import {
   $, $$, esc, TYPES, GRADES, AUDIENCES, CLASS_CHATS, CLASS_JOURNALS, classesFor, classChatName, renderYear, legendHTML, upcoming, loadCalendar, messageHTML, wireEdits, editing, licenceHTML, MEDALS, medalHTML, threadId, senseiList,
   calendarYears, isRelevant, noticeIsFor, homeworkIsFor, myAudiences, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
   toast, busy, registerSW, DEFAULT_FEES, FEE_GROUPS, feeLevel, money, paypalLink, agreedFee,
-  monthKey, monthName, isMonthly, PAY_METHODS, keyOf,
+  monthKey, monthName, isMonthly, payMethod, keyOf,
 } from './common.js';
 
 const VIEWS = ['home', 'calendar', 'menu', 'homework', 'syllabus', 'pay', 'licence', 'medals', 'attendance', 'profile'];
@@ -641,14 +641,21 @@ $('#form-chat').addEventListener('submit', async e => {
   });
 });
 
-// ---- pay fees with PayPal ----
+// ---- pay fees: by card, Apple Pay or Google Pay (Stripe Checkout, see cardPayments in the
+// control panel's functions), or with PayPal ----
+const CARD_API = `https://europe-west2-${firebaseConfig.projectId}.cloudfunctions.net/cardPayments`;
 async function drawPay() {
   const p = state.profile;
   if (!p) return;
-  let settings = null;
-  try { settings = await api.getPayments(); } catch (e) { console.warn(e); }
+  let settings = null, cardSet = null;
+  [settings, cardSet] = await Promise.all([
+    api.getPayments().catch(e => { console.warn(e); return null; }),
+    api.getCards().catch(() => null),
+  ]);
   const fees = (settings && settings.fees) || DEFAULT_FEES;
   const paypal = settings && settings.paypal;
+  // Card payments need Sensei's saved fees: the price is always taken from them, not from the app.
+  const cards = !!(cardSet && cardSet.on && settings && settings.fees);
   const track = PAYPAL_AUTO_TRACK && { uid: state.user.uid, notifyUrl: `https://europe-west2-${firebaseConfig.projectId}.cloudfunctions.net/paypalIpn` };
   drawPayStatus();
   const level = feeLevel(p.grade);
@@ -656,19 +663,29 @@ async function drawPay() {
   // drop-in / pay-per-lesson fees, for the classes they attend. Other fees stay in the coach panel.
   const levelName = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' }[level];
   const classes = (p.disciplines || []).filter(g => FEE_GROUPS[g]);
-  $('#pay-intro').innerHTML = paypal
-    ? `<b>Choose per lesson or per month.</b> PayPal opens with the amount filled in — pay with a card or your PayPal account. Paying for <b>${esc(p.name)}</b> (${esc(GRADES[p.grade] || 'No belt')}).`
+  const who = `Paying for <b>${esc(p.name)}</b> (${esc(GRADES[p.grade] || 'No belt')}).`;
+  $('#pay-intro').innerHTML = cards
+    ? `<b>Choose per lesson or per month.</b> Pay by card, Apple Pay or Google Pay${paypal ? ', or with PayPal' : ''}. ${who}`
+    : paypal ? `<b>Choose per lesson or per month.</b> PayPal opens with the amount filled in — pay with a card or your PayPal account. ${who}`
     : 'Online payment isn’t set up yet — please pay Sensei at the dojo for now.';
   if (p.feesExempt) $('#pay-intro').innerHTML = `<b>Sensei has marked ${esc(p.name)} as exempt, so you don’t need to pay fees.</b> You can still pay below if you want to.<br>` + $('#pay-intro').innerHTML;
+  $('#pay-note').textContent = (cards
+    ? 'Card, Apple Pay and Google Pay payments go straight to the EmptyHands bank account through Stripe’s secure payment page. We never see your card details. '
+    : '') + (paypal ? `PayPal payments go straight to EmptyHands${cards ? '' : ' — you don’t need a PayPal account, you can pay by debit or credit card'}. ` : '')
+    + 'The student’s name is attached so Sensei knows who has paid, and the payment shows here a moment later. Classes can’t be carried forward.';
 
   // One card per class, with two choices: per lesson, and per month at the student's level.
-  // PayPal opens in the browser; in the phone apps it then comes back to a page with a button that opens the app.
+  // The payment pages open in the browser; in the phone apps they then come back to a page with a button that opens the app.
   const back = NATIVE ? STUDENT_URL + 'paid.html' : STUDENT_URL;
-  const option = (f, label, sub) => !f ? '' : paypal
-    ? `<a class="fee-option" href="${esc(paypalLink(paypal, f, p.name, track, back))}" target="_blank" rel="noopener"
-        aria-label="Pay ${money(f.price)} ${label.toLowerCase()} for ${esc(FEE_GROUPS[f.group])} with PayPal or card">
-        <span class="fee-option-label">${label}</span><b>${money(f.price)}</b><small>${esc(sub)}</small><span class="btn btn--paypal btn--sm">Pay ${money(f.price)}</span></a>`
-    : `<div class="fee-option"><span class="fee-option-label">${label}</span><b>${money(f.price)}</b><small>${esc(sub)}</small></div>`;
+  const head = (f, label, sub) => `<span class="fee-option-label">${label}</span><b>${money(f.price)}</b><small>${esc(sub)}</small>`;
+  const what = (f, label) => `${money(f.price)} ${label.toLowerCase()} for ${esc(FEE_GROUPS[f.group] || 'Karate')}`;
+  const option = (f, label, sub) => !f ? ''
+    : cards ? `<div class="fee-option has-pay">${head(f, label, sub)}
+        <button type="button" class="btn btn--seal btn--sm fee-card" data-card="${esc(f.id)}" aria-label="Pay ${what(f, label)} by card, Apple Pay or Google Pay">Pay ${money(f.price)}</button>
+        ${paypal ? `<a class="fee-paypal" href="${esc(paypalLink(paypal, f, p.name, track, back))}" target="_blank" rel="noopener" aria-label="Pay ${what(f, label)} with PayPal">or pay with <b>PayPal</b></a>` : ''}</div>`
+    : paypal ? `<a class="fee-option" href="${esc(paypalLink(paypal, f, p.name, track, back))}" target="_blank" rel="noopener"
+        aria-label="Pay ${what(f, label)} with PayPal or card">${head(f, label, sub)}<span class="btn btn--paypal btn--sm">Pay ${money(f.price)}</span></a>`
+    : `<div class="fee-option">${head(f, label, sub)}</div>`;
   $('#fee-list').innerHTML = classes.map(g => {
     const lesson = lessonFee(fees, g);
     const month = monthFee(fees, g, level);
@@ -681,6 +698,38 @@ async function drawPay() {
     if (!lesson && !monthly) return '';
     return `<section class="card fee-class"><h2>${FEE_GROUPS[g]}</h2><div class="fee-options">${option(lesson, 'Per lesson', 'Pay as you go')}${monthly}</div></section>`;
   }).join('') || '<p class="muted">There are no fees set up for your classes yet. Please ask Sensei how to pay.</p>';
+}
+
+// Card / Apple Pay / Google Pay: the function makes a Stripe payment page for the chosen fee and
+// we go to it. Stripe then comes back to the app with ?card=<session id> (or to paid.html in the phone apps).
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-card]');
+  if (!b) return;
+  await busy(b, async () => {
+    try {
+      const res = await fetch(CARD_API, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + await api.idToken() },
+        body: JSON.stringify({ action: 'checkout', fee: b.dataset.card, native: NATIVE }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok || !out.url) throw new Error(out.error || 'Card payments aren’t working right now. Please try again later, or pay at the dojo.');
+      location.assign(out.url);
+      await new Promise(r => setTimeout(r, 4000)); // keep the button busy while the payment page opens
+    } catch (err) {
+      toast(err instanceof TypeError ? 'Couldn’t reach the payment page. Check your connection and try again.' : err.message, 'bad');
+    }
+  });
+});
+
+// Back from Stripe's payment page: record the payment straight away (a moment later it shows
+// in "Your payments" and this month's status).
+const cardBack = new URLSearchParams(location.search).get('card');
+if (cardBack) {
+  history.replaceState(null, '', location.pathname + '#pay');
+  fetch(CARD_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'confirm', session: cardBack }) })
+    .then(r => r.json())
+    .then(out => toast(out.paid ? `Thank you! ${money(out.amount)} paid${out.wallet === 'apple_pay' ? ' with Apple Pay' : out.wallet === 'google_pay' ? ' with Google Pay' : ' by card'}.` : 'The payment didn’t go through, so nothing was taken. You can try again.', out.paid ? 'ok' : 'bad'))
+    .catch(() => toast('Thank you! Your payment will show here in a few minutes.'));
 }
 
 // The two fees a student chooses between for a class: per lesson, and per month (the one for
@@ -700,10 +749,10 @@ function drawPayStatus() {
   box.hidden = !!p.feesExempt || p.role !== 'student';
   box.className = 'card pay-status ' + (paid ? 'is-paid' : 'is-due');
   box.innerHTML = paid
-    ? `<b>✓ ${monthName(month)} fees paid</b><small>${money(paid.amount)} · ${PAY_METHODS[paid.method] || ''} · ${new Date(paid.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</small>`
+    ? `<b>✓ ${monthName(month)} fees paid</b><small>${money(paid.amount)} · ${payMethod(paid)} · ${new Date(paid.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</small>`
     : `<b>${monthName(month)} fees not paid yet</b><small>Pay your monthly fee below, or pay Sensei at the dojo.</small>`;
   $('#pay-history-wrap').hidden = !list.length;
-  $('#pay-history').innerHTML = list.slice(0, 24).map(x => `<li><span><b>${esc(x.feeName || 'Payment')}</b><small>${monthName(x.month)} · ${PAY_METHODS[x.method] || ''}</small></span><b>${money(x.amount)}</b></li>`).join('');
+  $('#pay-history').innerHTML = list.slice(0, 24).map(x => `<li><span><b>${esc(x.feeName || 'Payment')}</b><small>${monthName(x.month)} · ${payMethod(x)}</small></span><b>${money(x.amount)}</b></li>`).join('');
 }
 
 // ---- homework ----
@@ -1151,7 +1200,7 @@ onBack(() => {
   if (!$('#tabbar').hidden && state.view && state.view !== 'home') { show('home'); history.replaceState(null, '', '#home'); return; }
   leaveApp();
 });
-// Back in the app (e.g. after paying with PayPal): show the latest.
+// Back in the app (e.g. after paying by card or PayPal): show the latest.
 onResume(() => {
   if (!state.user || !state.profile) return;
   if (state.view === 'pay') drawPay();
