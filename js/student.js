@@ -3,7 +3,7 @@ import { COACH_URL, STUDENT_URL, SITE_URL, OWNER_EMAILS, RECOMMENDED, PAYPAL_AUT
 import { NATIVE, pushState, enablePush, onPushTap, shareFile, printPage, onBack, leaveApp, onResume } from './native.js';
 import { webPushReady, webPushToken } from './webpush.js';
 import {
-  $, $$, esc, TYPES, GRADES, AUDIENCES, CLASS_CHATS, classChatsFor, classChatName, renderYear, legendHTML, upcoming, loadCalendar, messageHTML, wireEdits, editing, licenceHTML, MEDALS, medalHTML, threadId, senseiList,
+  $, $$, esc, TYPES, GRADES, AUDIENCES, CLASS_CHATS, CLASS_JOURNALS, classesFor, classChatName, renderYear, legendHTML, upcoming, loadCalendar, messageHTML, wireEdits, editing, licenceHTML, MEDALS, medalHTML, threadId, senseiList,
   calendarYears, isRelevant, noticeIsFor, homeworkIsFor, myAudiences, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
   toast, busy, registerSW, DEFAULT_FEES, FEE_GROUPS, feeLevel, money, paypalLink, agreedFee,
   monthKey, monthName, isMonthly, PAY_METHODS, keyOf,
@@ -139,8 +139,8 @@ function stopAll() {
   state.group = []; state.journal = []; state.homework = []; state.payments = [];
   state.loaded = {}; state.prevRead = null;
   (state.groupStops || []).forEach(stop => stop()); state.groupStops = []; state.groupKey = '';
-  (state.gchStops || []).forEach(stop => stop()); state.gchStops = []; state.gchKey = ''; state.gch = null;
-  Object.keys(CLASS_CHATS).forEach(id => { state[id] = []; });
+  (state.gchStops || []).forEach(stop => stop()); state.gchStops = []; state.gchKey = ''; state.cls = null;
+  [...Object.keys(CLASS_CHATS), ...Object.keys(CLASS_JOURNALS)].forEach(id => { state[id] = []; });
 }
 
 async function onAuth(user) {
@@ -269,36 +269,38 @@ function startMember() {
   watchGroups();
   watchSenseiChats();
   watchClassChats();
-  state.stops.push(api.watchChannel('journal', list => onList('journal', list)));
 
 }
-// The group chats for the student's classes; restarted when their classes change.
-// state.gch is the one open in the Group chat tab.
+// The group chat and training journal for each of the student's classes; restarted when their
+// classes change. state.cls is the class open in the Group chat and Journal tabs.
 function watchClassChats() {
-  const ids = classChatsFor(state.profile);
-  if (state.gchKey === ids.join()) return;
-  state.gchKey = ids.join();
+  const classes = classesFor(state.profile);
+  if (state.gchKey === classes.join()) return;
+  state.gchKey = classes.join();
   (state.gchStops || []).forEach(stop => stop());
+  const ids = classes.flatMap(c => ['group-' + c, 'journal-' + c]);
   state.gchStops = ids.map(id => { state[id] = state[id] || []; return api.watchChannel(id, list => onList(id, list)); });
   let saved = null;
-  try { saved = localStorage.getItem('eh-gch'); } catch { /* storage blocked */ }
-  if (!ids.includes(state.gch)) state.gch = ids.includes(saved) ? saved : ids[0] || null;
+  try { saved = (localStorage.getItem('eh-gch') || '').replace(/^group-/, ''); } catch { /* storage blocked */ }
+  if (!classes.includes(state.cls)) state.cls = classes.includes(saved) ? saved : classes[0] || null;
   drawMenu();
 }
-// The channel the Group chat tab stands for at the moment (or the open channel itself).
-const chId = () => (state.channel === 'group' ? state.gch : state.channel);
+const byClass = ch => ch === 'group' || ch === 'journal';
+// The channel a tab stands for at the moment: for Group chat and Journal, that tab's channel for the open class.
+const chId = () => (byClass(state.channel) ? (state.cls ? `${state.channel}-${state.cls}` : null) : state.channel);
 const unreadOf = id => (state[id] || []).filter(m => m.uid !== state.user.uid && !isBlocked(m) && m.createdAt > seenAt(id)).length;
 function drawGroupPick() {
-  const ids = classChatsFor(state.profile);
+  const classes = classesFor(state.profile), tab = state.channel;
   const box = $('#group-pick');
-  box.hidden = state.channel !== 'group' || ids.length < 2;
-  box.innerHTML = ids.map(id => `<button type="button" class="chip" role="tab" data-gch="${id}" aria-selected="${id === state.gch}">${classChatName(id)}${unreadOf(id) && id !== state.gch ? '<span class="dot"></span>' : ''}</button>`).join('');
+  box.hidden = !byClass(tab) || classes.length < 2;
+  box.setAttribute('aria-label', tab === 'journal' ? 'Which class training journal' : 'Which class group chat');
+  box.innerHTML = classes.map(c => `<button type="button" class="chip" role="tab" data-gch="${c}" aria-selected="${c === state.cls}">${classChatName('group-' + c)}${byClass(tab) && unreadOf(tab + '-' + c) && c !== state.cls ? '<span class="dot"></span>' : ''}</button>`).join('');
 }
 $('#group-pick').addEventListener('click', e => {
   const b = e.target.closest('[data-gch]');
-  if (!b || b.dataset.gch === state.gch) return;
-  state.gch = b.dataset.gch;
-  try { localStorage.setItem('eh-gch', state.gch); } catch { /* storage blocked */ }
+  if (!b || b.dataset.gch === state.cls) return;
+  state.cls = b.dataset.gch;
+  try { localStorage.setItem('eh-gch', state.cls); } catch { /* storage blocked */ }
   editing.id = null; state.prevRead = null;
   drawMenu(); markRead(); scrollFeed();
 });
@@ -395,7 +397,7 @@ function unreadIn(ch) {
   if (!state.member) return 0;
   if (ch === 'notices') return myNotices().filter(n => n.createdAt > (state.profile.lastRead || 0)).length;
   if (ch === 'sensei') return Object.keys(state.dms || {}).reduce((n, k) => n + dmUnread(k), 0);
-  if (ch === 'group') return classChatsFor(state.profile).reduce((n, id) => n + unreadOf(id), 0);
+  if (byClass(ch)) return classesFor(state.profile).reduce((n, c) => n + unreadOf(ch + '-' + c), 0);
   return unreadOf(ch);
 }
 function unread() { return ['notices', 'group', 'journal', 'sensei'].reduce((n, ch) => n + unreadIn(ch), 0); }
@@ -447,7 +449,7 @@ function noticeHTML(n, isNew) {
 const CHANNELS = {
   notices: { intro: 'Notices from Sensei. Only Sensei can post here.' },
   group: { intro: '', placeholder: 'Message the group…' },
-  journal: { intro: 'Your training journal: share what you practised, so Sensei and the group can see how you’re getting on.', placeholder: 'What did you practise today? e.g. Heian Shodan ×5, kihon 20 min' },
+  journal: { intro: '', placeholder: 'What did you practise today? e.g. Heian Shodan ×5, kihon 20 min' },
   sensei: { intro: 'Message Sensei privately. Only Sensei can see these messages, and any Sensei can reply.', placeholder: 'Message Sensei privately…' },
 };
 $('#rec-name').textContent = RECOMMENDED.name;
@@ -483,16 +485,18 @@ function drawMenu() {
   document.body.classList.toggle('in-chat', state.view === 'menu' && !pending);
   if (pending) return;
   const ch = state.channel;
-  const cid = chId(); // for the Group chat tab: the class group chat that's open
-  const cname = ch === 'group' && cid ? classChatName(cid) : '';
+  const cid = chId(); // for the Group chat and Journal tabs: the open class's chat or journal
+  const cname = byClass(ch) && cid ? classChatName(cid) : '';
   $$('.channels [data-ch]').forEach(b => b.setAttribute('aria-selected', b.dataset.ch === ch));
   $('#ch-intro').textContent = ch === 'group'
-    ? (cid ? `${cname} group chat: students in the ${cname} classes, their families and Sensei. Everyone in this group can see these messages.` : 'Choose your classes in your Profile to join their group chats.')
+    ? (cid ? `${cname} group chat: students in the ${cname} classes, their families and Sensei. Only this class can see these messages.` : 'Choose your classes in your Profile to join their group chats.')
+    : ch === 'journal'
+    ? (cid ? `${cname} training journal: share what you practised. Only students in the ${cname} classes, their families and Sensei can see it.` : 'Choose your classes in your Profile to join their training journals.')
     : ch !== 'sensei' || state.dmKey === 'all' ? CHANNELS[ch].intro
     : `Private messages between you and ${senseiName(state.dmKey)} only.` + ((state.senseis || []).find(x => x.key === state.dmKey && x.head) ? '' : ' The head Sensei can also read them, to keep everyone safe.');
   drawPicker();
   drawGroupPick();
-  $('#form-chat').hidden = ch === 'notices' || (ch === 'group' && !cid);
+  $('#form-chat').hidden = ch === 'notices' || (byClass(ch) && !cid);
   $('#chat-text').placeholder = ch === 'group' ? `Message the ${cname} group…` : CHANNELS[ch].placeholder || '';
   $('#journal-phrases').hidden = ch !== 'journal';
   const since = state.prevRead && state.prevRead.ch === cid ? state.prevRead.at : null;
@@ -504,7 +508,7 @@ function drawMenu() {
     const mine = m.uid === state.user.uid;
     return messageHTML(m, mine, mine, mine, { report: !mine, block: !mine && m.from === 'student' && !!m.uid });
   });
-  const empty = { notices: 'No notices yet. When Sensei sends one, it will appear here.', group: cname ? `No messages yet — say hello to the ${cname} group!` : 'No group chat yet.', journal: 'Nothing logged yet. After you train, share what you practised.', sensei: 'No messages yet. You can message Sensei privately here.' }[ch];
+  const empty = { notices: 'No notices yet. When Sensei sends one, it will appear here.', group: cname ? `No messages yet — say hello to the ${cname} group!` : 'No group chat yet.', journal: cname ? `Nothing in the ${cname} journal yet. After you train, share what you practised.` : 'No training journal yet.', sensei: 'No messages yet. You can message Sensei privately here.' }[ch];
   const feed = $('#menu-feed');
   // Keep following the conversation if they were already at the latest message.
   const box = $('#chat-scroll');
@@ -883,13 +887,16 @@ function drawKeyDates(days) {
     ['grading', 'Gradings & workshops'],
     ['blackbelt', 'Black belt classes'],
   ].filter(([t]) => isRelevant(t, state.profile) || !$('#only-mine').checked);
-  const notes = Object.entries(days).filter(([, v]) => v.note && v.type === 'training');
-  const li = ([k, v]) => `<li class="${k < today ? 'is-past' : ''}"><time>${shortDate(k)}</time><span>${esc(v.note || '')}</span>${k >= today ? `<small>${whenText(k)}</small>` : ''}</li>`;
+  // Only dates still to come are listed; ones that have passed drop off.
+  const inYear = ([k]) => k.startsWith(state.year + '-');
+  const notes = Object.entries(days).filter(([k, v]) => v.note && v.type === 'training' && k >= today && inYear([k]));
+  const li = ([k, v]) => `<li><time>${shortDate(k)}</time><span>${esc(v.note || '')}</span><small>${whenText(k)}</small></li>`;
   const sorted = list => list.sort(([a], [b]) => a.localeCompare(b));
   $('#cal-keydates').innerHTML = groups.map(([t, title]) => {
-    const list = sorted(Object.entries(days).filter(([k, v]) => v.type === t && k.startsWith(state.year + '-')));
+    const all = Object.entries(days).filter(([k, v]) => v.type === t && inYear([k]));
+    const list = sorted(all.filter(([k]) => k >= today));
     return `<section class="card keydates-group"><h2><span class="swatch t-${t}"></span>${title} <small>${list.length}</small></h2>
-      ${list.length ? `<ul>${list.map(li).join('')}</ul>` : '<p class="muted fine">None this year.</p>'}</section>`;
+      ${list.length ? `<ul>${list.map(li).join('')}</ul>` : `<p class="muted fine">${all.length ? 'No more this year.' : 'None this year.'}</p>`}</section>`;
   }).join('') + (notes.length ? `<section class="card keydates-group"><h2><span class="swatch t-note"></span>Notes on class days</h2><ul>${sorted(notes).map(li).join('')}</ul></section>` : '');
 }
 
