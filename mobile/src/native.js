@@ -1,6 +1,7 @@
 // Phone-app hooks, bundled into www/js/native.js by build.mjs (the website uses the
 // do-nothing js/native.js instead).
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import { FirebaseMessaging } from '@capacitor-firebase/messaging';
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
@@ -47,3 +48,18 @@ export async function shareFile(name, text) {
   await Share.share({ title: name, files: [uri] });
   return true;
 }
+
+// Prints the page with the phone's own print screen (which can also save a PDF). The plugin is
+// part of the app itself: PrintPlugin.java (Android) and SceneDelegate.swift (iPhone).
+const Print = registerPlugin('Print');
+export async function printPage(name) {
+  if (!NATIVE) return false;
+  await Print.printPage({ name });
+  return true;
+}
+
+// Android's Back button (the app decides what it does: close a dialog, go back to Home, then leave).
+export function onBack(cb) { if (NATIVE) App.addListener('backButton', () => cb()); }
+export function leaveApp() { if (NATIVE) App.minimizeApp().catch(() => App.exitApp()); }
+// The app comes back to the front (e.g. after paying in PayPal).
+export function onResume(cb) { if (NATIVE) App.addListener('resume', () => cb()); }

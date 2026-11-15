@@ -72,5 +72,16 @@
 	<false/>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>uk.co.emptyhands.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>uk.co.emptyhands.app</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

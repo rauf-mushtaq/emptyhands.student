@@ -11,16 +11,14 @@
 <link rel="apple-touch-icon" href="home-icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="EmptyHands Student">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Karla:wght@400;500;700&family=Shippori+Mincho:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="assets/fonts/fonts.css">
 <link rel="stylesheet" href="app.css">
 </head>
 <body class="student">
 <div class="demo-banner" id="demo-banner" hidden>Demo mode — accounts and messages are saved in this browser only. See the README to go live.</div>
 
 <header class="app-top">
-  <a class="app-brand" href="https://rauf-mushtaq.github.io/emptyhands/" aria-label="EmptyHands website"><img src="assets/img/logo.png" alt="EmptyHands KaraTe School" width="600" height="600"></a>
+  <a class="app-brand" href="https://emptyhands.co.uk/" aria-label="EmptyHands website"><img src="assets/img/logo.png" alt="EmptyHands KaraTe School" width="600" height="600"></a>
   <span class="app-title">Student</span>
   <button class="app-user" id="top-user" data-go="profile" aria-label="Your profile" hidden></button>
 </header>
@@ -53,6 +51,7 @@
         <label>Email<input type="email" name="email" autocomplete="email" required></label>
         <label>Password <small>(6+ characters)</small><input type="password" name="password" autocomplete="new-password" minlength="6" required></label>
         <div class="profile-slot"></div>
+        <label class="check rules-check"><input type="checkbox" name="rules" required> I agree to the <a href="privacy.html#rules" target="_blank" rel="noopener">community rules</a>: be kind, no bullying or offensive messages, and Sensei can delete messages and remove accounts that break them.</label>
         <p class="form-error" hidden></p>
         <button class="btn btn--seal btn--block" type="submit">Create my account</button>
         <p class="fine">Under 13? A parent or guardian should create the account. We only use these details to run classes and send dojo notices — see our <a href="privacy.html" target="_blank" rel="noopener">privacy policy</a>.</p>
@@ -109,7 +108,7 @@
       <button data-go="home">Home</button><button data-go="calendar">Calendar</button><button data-go="menu">EmptyHands chats</button>
       <button data-go="homework">Homework</button><button data-go="syllabus">Syllabus</button><button data-go="pay">Pay fees</button>
       <button data-go="attendance">My attendance</button><button data-go="medals">My medals</button><button data-go="licence">My licence</button><button data-go="profile">Profile &amp; notifications</button>
-      <a href="https://rauf-mushtaq.github.io/emptyhands/" target="_blank" rel="noopener">EmptyHands website</a>
+      <a href="https://emptyhands.co.uk/" target="_blank" rel="noopener">EmptyHands website</a>
     </nav>
     <button type="button" class="btn btn--ghost btn--block" data-signout>Sign out</button>
   </dialog>
@@ -127,6 +126,7 @@
       </div>
     </div>
     <div class="legend" id="cal-legend"></div>
+    <p class="muted fine cal-provisional" id="cal-provisional" hidden></p>
     <div class="cal-tools">
       <label class="switch"><input type="checkbox" id="only-mine" checked><span></span>Only dates relevant to me</label>
       <span class="cal-links">
@@ -156,9 +156,9 @@
       <div class="menu-main">
         <div class="channels" role="tablist" aria-label="Channels">
           <button type="button" role="tab" data-ch="notices">Notices<span class="dot" hidden></span></button>
-          <button type="button" role="tab" data-ch="group">Group chat<span class="dot" hidden></span></button>
-          <button type="button" role="tab" data-ch="journal">Training journal<span class="dot" hidden></span></button>
-          <button type="button" role="tab" data-ch="sensei">Message Sensei<span class="dot" hidden></span></button>
+          <button type="button" role="tab" data-ch="group"><span class="ch-full">Group chat</span><span class="ch-short">Group</span><span class="dot" hidden></span></button>
+          <button type="button" role="tab" data-ch="journal"><span class="ch-full">Training journal</span><span class="ch-short">Journal</span><span class="dot" hidden></span></button>
+          <button type="button" role="tab" data-ch="sensei"><span class="ch-full">Message Sensei</span><span class="ch-short">Sensei</span><span class="dot" hidden></span></button>
         </div>
         <div class="chips dm-pick" id="dm-pick" role="tablist" aria-label="Who to message" hidden></div>
         <div class="chat-scroll" id="chat-scroll">
@@ -261,12 +261,18 @@
       <button class="btn btn--seal btn--sm" type="button" data-notify-on hidden>Turn on notifications</button>
       <label class="switch" id="class-reminders-wrap"><input type="checkbox" id="class-reminders" checked><span></span>Class reminders: 2 hours and 5 minutes before your classes</label>
     </section>
+    <section class="card stack" id="blocked-card" hidden>
+      <h2>Blocked</h2>
+      <p class="muted fine">You don’t see these students’ posts in the group chat or training journal.</p>
+      <ul class="plain blocked-list" id="blocked-list"></ul>
+    </section>
     <div class="row-actions">
       <button class="btn btn--ghost" data-signout>Sign out</button>
       <button class="linkish" data-go="pay">Pay fees</button>
       <button class="linkish" data-go="licence">My licence</button>
       <button class="linkish install-btn" type="button" data-install hidden>Add to home screen</button>
       <a class="linkish" href="privacy.html" target="_blank" rel="noopener">Privacy policy</a>
+      <a class="linkish" href="privacy.html#rules" target="_blank" rel="noopener">Community rules</a>
       <button class="linkish danger" id="delete-account">Delete my account</button>
     </div>
   </section>
@@ -318,10 +324,45 @@
 <dialog id="delete-dialog" class="sheet">
   <form method="dialog" class="stack" id="form-delete">
     <h2>Delete your account?</h2>
-    <p class="muted">This removes your profile and sign-in from EmptyHands. It can’t be undone. Enter your password to confirm.</p>
+    <p class="muted">This deletes your sign-in and everything the app keeps about you: your profile, messages and posts, licence, medals and attendance. Payment records are kept for the dojo’s accounts. It can’t be undone. Enter your password to confirm.</p>
     <label>Password<input type="password" name="password" autocomplete="current-password" required></label>
     <p class="form-error" hidden></p>
     <div class="row-actions"><button class="btn btn--seal" value="delete">Delete account</button><button class="btn btn--ghost" value="cancel" formnovalidate>Cancel</button></div>
+  </form>
+</dialog>
+
+<dialog id="report-dialog" class="sheet">
+  <form method="dialog" class="stack" id="form-report">
+    <h2>Report this message</h2>
+    <blockquote class="report-quote" id="report-quote"></blockquote>
+    <fieldset class="report-reasons"><legend>What’s wrong with it?</legend>
+      <label class="check"><input type="radio" name="reason" value="Bullying or unkind" required> Bullying or unkind</label>
+      <label class="check"><input type="radio" name="reason" value="Rude or inappropriate"> Rude or inappropriate</label>
+      <label class="check"><input type="radio" name="reason" value="Makes me feel unsafe"> Makes me feel unsafe</label>
+      <label class="check"><input type="radio" name="reason" value="Spam"> Spam</label>
+      <label class="check"><input type="radio" name="reason" value="Something else"> Something else</label>
+    </fieldset>
+    <label>Anything else? <small>(optional)</small><textarea name="details" maxlength="300" rows="2"></textarea></label>
+    <p class="muted fine">Only the head Sensei sees reports, and they check them within 24 hours.</p>
+    <p class="form-error" hidden></p>
+    <div class="row-actions"><button class="btn btn--seal" value="send">Send report</button><button class="btn btn--ghost" value="cancel" formnovalidate>Cancel</button></div>
+  </form>
+</dialog>
+
+<dialog id="rules-dialog" class="sheet">
+  <form method="dialog" class="stack" id="form-rules">
+    <p class="eyebrow">Before you carry on</p>
+    <h2>Our community rules</h2>
+    <p class="muted">EmptyHands chats are for the whole dojo family, so everyone agrees to these rules:</p>
+    <ul class="rules-list">
+      <li>Be kind and respectful: the Dojo Kun apply here too.</li>
+      <li>No bullying, threats, swearing, or hateful or sexual content.</li>
+      <li>Don’t share other people’s private details.</li>
+      <li>Keep messages about the dojo and training: no adverts or spam.</li>
+      <li>Use <b>Report</b> on any message that worries you. The head Sensei checks reports within 24 hours, deletes messages that break these rules and removes anyone who keeps breaking them.</li>
+    </ul>
+    <p class="fine"><a href="privacy.html#rules" target="_blank" rel="noopener">Read the full rules</a></p>
+    <div class="row-actions"><button class="btn btn--seal" value="agree">I agree</button><button class="btn btn--ghost" value="signout" formnovalidate>Sign out</button></div>
   </form>
 </dialog>
 

@@ -14,6 +14,7 @@ for (const f of ['index.html', 'privacy.html', 'app.css', 'home-icon-192.png', '
 cpSync(root + 'js', www + 'js', { recursive: true, filter: src => !/\/(firebase-sdk|native)\.js$/.test(src) });
 cpSync(root + 'assets/syllabus', www + 'assets/syllabus', { recursive: true });
 cpSync(root + 'assets/img/explore', www + 'assets/img/explore', { recursive: true });
+cpSync(root + 'assets/fonts', www + 'assets/fonts', { recursive: true });
 
 // Bundle Firebase and the Capacitor plugins so nothing is downloaded at runtime.
 for (const name of ['firebase-sdk', 'native']) {

@@ -64,7 +64,7 @@ jobs:
           echo "$KEY_BASE64" | base64 --decode > "$key"
           auth=(-allowProvisioningUpdates -authenticationKeyPath "$key" -authenticationKeyID "$KEY_ID" -authenticationKeyIssuerID "$ISSUER_ID")
           xcodebuild -project App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' \
-            -archivePath "$RUNNER_TEMP/App.xcarchive" DEVELOPMENT_TEAM="$TEAM_ID" CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" DEVELOPMENT_TEAM="$TEAM_ID" CURRENT_PROJECT_VERSION="${{ github.run_number }}" MARKETING_VERSION="1.0.${{ github.run_number }}" \
             "${auth[@]}" archive | tail -n 40
           test ${PIPESTATUS[0]} -eq 0
           cat > "$RUNNER_TEMP/export.plist" <<PLIST

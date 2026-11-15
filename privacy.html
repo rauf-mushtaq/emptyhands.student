@@ -3,17 +3,16 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>EmptyHands · Privacy policy</title>
-<meta name="description" content="How the EmptyHands student app uses your information.">
+<title>EmptyHands · Privacy policy and community rules</title>
+<meta name="description" content="How the EmptyHands student app uses your information, how to delete your account, and the community rules for EmptyHands chats.">
 <link rel="icon" href="home-icon-192.png" type="image/png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Karla:wght@400;500;700&family=Shippori+Mincho:wght@500;600;700&display=swap">
+<link rel="stylesheet" href="assets/fonts/fonts.css">
 <link rel="stylesheet" href="app.css">
 <style>
   .policy { max-width: 720px; }
   .policy h2 { margin-top: 1.6em; }
   .policy li { margin-bottom: .4em; }
+  .policy .toc { display: flex; flex-wrap: wrap; gap: 8px 18px; }
 </style>
 </head>
 <body>
@@ -22,39 +21,65 @@
   <span class="app-title">Privacy</span>
 </header>
 <main class="app-main policy">
-  <p class="eyebrow">Last updated 21 October 2026</p>
+  <p class="eyebrow">Last updated 15 November 2026</p>
   <h1>Privacy policy</h1>
-  <p>This policy covers the EmptyHands student app: the app in the App Store and Google Play and the same app on our website. It’s run by EmptyHands KaraTe School (St Andrews Church Hall, The Drive, Ilford IG1). You can contact us at <a href="mailto:info@emptyhands.co.uk">info@emptyhands.co.uk</a> or on 07931 300470.</p>
+  <p class="toc fine"><a href="#collect">What we collect</a><a href="#delete">Deleting your account</a><a href="#rules">Community rules</a></p>
+  <p>This policy covers the EmptyHands student app: the app on Google Play and the App Store, and the same app on our website. It’s run by EmptyHands KaraTe School, Church Hall, St Andrew’s, The Drive, Ilford IG1 3PE. You can contact us at <a href="mailto:info@emptyhands.co.uk">info@emptyhands.co.uk</a> or on 07931 300470.</p>
 
-  <h2>What we collect</h2>
+  <h2 id="collect">What we collect</h2>
   <ul>
-    <li><b>Account details you give us:</b> email address, password (stored only in encrypted form by our sign-in provider), the student’s name, an optional parent or guardian name and phone number, the classes attended, which dojo, and karate grade.</li>
-    <li><b>Messages and posts:</b> what you write in the group chat, the training journal and private messages to Sensei, and which homework you’ve ticked off.</li>
-    <li><b>App activity:</b> when you last read each channel, so we can show what’s new.</li>
+    <li><b>Account details you give us:</b> email address, password (stored only in encrypted form by our sign-in provider), the student’s name, an optional parent or guardian name and phone number, the classes they attend, their dojo and their karate belt.</li>
+    <li><b>Messages and posts:</b> what you write in the group chat, the training journal and private messages to Sensei (including any changes you make), and which homework you’ve ticked off.</li>
+    <li><b>Training records that Sensei keep:</b> the classes you attended (the register), medals Sensei award you, and your student licence: home address, membership number, start and renewal dates, and your belt record (grading dates, results and examiners).</li>
+    <li><b>Fees:</b> what you’ve paid and when (amount, which fee, month and how it was paid). If you pay with PayPal, PayPal tells us the amount, the transaction number and the payer’s name and PayPal email. We never see card details.</li>
+    <li><b>Safety:</b> when you agreed to the community rules, anyone you’ve blocked, and any reports you make (your name, the message and why you reported it).</li>
+    <li><b>App settings and activity:</b> when you last read each channel (to show what’s new) and whether you want class reminders.</li>
     <li><b>Notification token:</b> if you turn on notifications, a code from Apple or Google that lets us send notices to your phone.</li>
   </ul>
-  <p>We don’t collect your location, contacts, photos or advertising identifiers. The app has no adverts or tracking, and we don’t sell or share your information with anyone for marketing.</p>
+  <p>We don’t collect your location, contacts, photos or advertising identifiers. The app has no adverts, analytics or tracking, and we never sell your information or share it for marketing.</p>
 
   <h2>How we use it</h2>
   <ul>
     <li>To run your account and show the dojo calendar dates and notices that apply to you.</li>
-    <li>So Sensei (our instructors) can see who is registered, accept new students, set homework and get in touch about classes, gradings and dojo closures.</li>
-    <li>To run the group chat, training journal and private messages.</li>
-    <li>To send notifications, if you’ve turned them on.</li>
+    <li>So Sensei (our instructors) can accept new students, take the register, keep belt and licence records, award medals, set homework and get in touch about classes, gradings and closures.</li>
+    <li>To run the group chat, training journal and private messages, and to keep them safe (reports and blocks).</li>
+    <li>To keep track of fees and send fee reminders.</li>
+    <li>To send notifications and class reminders, if you’ve turned them on.</li>
   </ul>
-  <p>Our lawful basis is our legitimate interest in running classes for our students, and your consent for notifications (which you can turn off at any time in your phone’s settings).</p>
+  <p>Our lawful basis is our legitimate interest in running classes for our students and keeping them safe, and your consent for notifications (which you can turn off at any time in your phone’s settings).</p>
 
   <h2>Who can see it</h2>
-  <p>Only EmptyHands Sensei can see student details and private messages. Group chat and training journal posts can be seen by every accepted student and their family, so please don’t share private information there. Information is stored with Google Firebase: student details in Cloud Firestore in London, and sign-in details in Firebase Authentication, which Google may process outside the UK under its standard data protection terms. Notifications are delivered by Firebase Cloud Messaging and Apple Push Notification service. They process data on our behalf only.</p>
+  <p>Only EmptyHands Sensei can see student details, training records, licences and payments. Private messages are seen by the Sensei you write to and by the head Sensei, who can read every private chat and every report to keep students safe. Group chat and training journal posts can be seen by every accepted student and their family, so please don’t share private information there.</p>
+  <p>We use these services, which process data on our behalf only:</p>
+  <ul>
+    <li><b>Google Firebase:</b> sign-in (Firebase Authentication), the app’s data (Cloud Firestore, in London), the services that send notifications and reminders (Cloud Functions, in London) and notifications (Firebase Cloud Messaging). Google may process some data outside the UK under its standard data protection terms.</li>
+    <li><b>Apple Push Notification service</b>, for notifications on iPhone and iPad.</li>
+    <li><b>PayPal</b>, only if you choose to pay with it, under PayPal’s own privacy policy.</li>
+  </ul>
 
   <h2>Children</h2>
-  <p>Many of our students are children. A parent or guardian should create the account for a child under 13 and can manage or delete it at any time.</p>
+  <p>Many of our students are children. A parent or guardian should create the account for a child under 13, and can manage or delete it at any time. Private messages are only ever between a student and Sensei, and the head Sensei can read all of them.</p>
 
   <h2>How long we keep it</h2>
-  <p>We keep your information while you have an account. If you stop training with us we may remove you from the student list. You can delete your account at any time.</p>
+  <p>We keep your information while you have an account. If you stop training with us, Sensei may remove you from the student list. Payment records are kept for six years for the dojo’s accounts. Our daily backups are kept for 7 days.</p>
 
-  <h2>Deleting your account and your rights</h2>
-  <p>In the app, go to <b>Profile → Delete my account</b>. This permanently deletes your profile and sign-in. You can also email us to ask for a copy of your information, to correct it or to delete it. If you’re unhappy with how we handle your information you can complain to the Information Commissioner’s Office (<a href="https://ico.org.uk">ico.org.uk</a>).</p>
+  <h2 id="delete">Deleting your account and your rights</h2>
+  <p>In the app, go to <b>Profile → Delete my account</b> and enter your password. This permanently deletes your sign-in and profile, your private chats with Sensei, your group chat and training journal posts, your licence, your medals, homework set just for you, and your name on the registers. Payment records are kept for six years for the dojo’s accounts, and reports you made are kept until the head Sensei has dealt with them. Copies in our backups disappear within 7 days.</p>
+  <p>You can also email <a href="mailto:info@emptyhands.co.uk">info@emptyhands.co.uk</a> to ask us to delete your account and data, to send you a copy of your information or to correct it. If you’re unhappy with how we handle your information you can complain to the Information Commissioner’s Office (<a href="https://ico.org.uk">ico.org.uk</a>).</p>
+
+  <h2 id="rules">Community rules</h2>
+  <p>EmptyHands chats (the group chat, training journal and private messages) are for the whole dojo family, children included. Everyone who uses them agrees to these rules:</p>
+  <ul>
+    <li>Be kind and respectful: the Dojo Kun apply here too.</li>
+    <li>No bullying, threats, swearing, or hateful, violent or sexual content. There is zero tolerance for abusive messages or people.</li>
+    <li>Don’t share other people’s private details or anything that isn’t yours to share.</li>
+    <li>Keep messages about the dojo and training: no adverts or spam.</li>
+    <li>Parents and guardians should keep an eye on young children’s use of the app.</li>
+  </ul>
+  <p><b>If something worries you:</b> tap <b>Report</b> on the message. Only the head Sensei sees reports, and checks them within 24 hours. Messages that break these rules are deleted, and anyone who breaks them is removed from the app. You can also <b>Block</b> another student, so you no longer see their posts (unblock them any time in your Profile), or speak to Sensei at the dojo.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>If we change this policy, we’ll update the date at the top and, for important changes, tell you in the app.</p>
 
   <p class="row-actions"><a class="btn btn--ghost" href="index.html">Back to the app</a></p>
 </main>

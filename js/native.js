@@ -5,3 +5,7 @@ export async function pushState() { return 'unsupported'; }
 export async function enablePush() { return null; }
 export function onPushTap() {}
 export async function shareFile() { return false; }
+export async function printPage() { return false; }
+export function onBack() {}
+export function leaveApp() {}
+export function onResume() {}

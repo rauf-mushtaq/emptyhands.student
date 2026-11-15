@@ -1,6 +1,6 @@
 import { backend, DEMO, isCoach, errorText } from './backend.js';
 import { COACH_URL, STUDENT_URL, SITE_URL, OWNER_EMAILS, RECOMMENDED, PAYPAL_AUTO_TRACK, firebaseConfig } from './config.js';
-import { NATIVE, pushState, enablePush, onPushTap, shareFile } from './native.js';
+import { NATIVE, pushState, enablePush, onPushTap, shareFile, printPage, onBack, leaveApp, onResume } from './native.js';
 import { webPushReady, webPushToken } from './webpush.js';
 import {
   $, $$, esc, TYPES, GRADES, AUDIENCES, renderYear, legendHTML, upcoming, loadCalendar, messageHTML, wireEdits, editing, licenceHTML, MEDALS, medalHTML, threadId, senseiList,
@@ -106,6 +106,7 @@ $('#form-signup').addEventListener('submit', async e => {
   const p = readProfile(form);
   if (!p.name) return showError(form, 'Please enter the student’s name.');
   if (!p.disciplines.length) return showError(form, 'Please choose at least one class.');
+  if (!form.rules.checked) return showError(form, 'Please agree to the community rules.');
   await busy(form.querySelector('[type=submit]'), async () => {
     try {
       if (state.needsProfile) return await createProfile(state.needsProfile, p);
@@ -121,7 +122,7 @@ $('#form-signup').addEventListener('submit', async e => {
 async function createProfile(user, p) {
   state.user = user;
   state.needsProfile = null;
-  const profile = { ...p, email: user.email, role: 'pending', createdAt: Date.now(), lastRead: 0 };
+  const profile = { ...p, email: user.email, role: 'pending', createdAt: Date.now(), lastRead: 0, rulesAccepted: Date.now() };
   await api.saveProfile(user.uid, profile);
   state.pendingProfile = null;
   state.profile = profile;
@@ -161,7 +162,29 @@ async function onAuth(user) {
     toast('Please finish setting up your profile.');
     return;
   }
+  // Everyone agrees to the community rules once (accounts from before the rules existed, too).
+  if (!state.profile.rulesAccepted) {
+    if (!(await askRules())) { api.signOut(); return; }
+    try { await api.acceptRules(user.uid); } catch (err) { console.warn(err); }
+    state.profile.rulesAccepted = Date.now();
+  }
   await enter(user);
+}
+
+// The community rules: "I agree" carries on, "Sign out" signs out. It can't just be closed.
+function askRules() {
+  return new Promise(resolve => {
+    const d = $('#rules-dialog');
+    const form = $('#form-rules');
+    form.onsubmit = e => {
+      e.preventDefault();
+      form.onsubmit = null; d.oncancel = null;
+      d.close();
+      resolve(!!e.submitter && e.submitter.value === 'agree');
+    };
+    d.oncancel = e => e.preventDefault();
+    d.showModal();
+  });
 }
 
 const CONTACT = 'please contact us on 07931 300470 or <a href="mailto:info@emptyhands.co.uk">info@emptyhands.co.uk</a>';
@@ -192,7 +215,7 @@ async function enter(user) {
   const p = state.profile;
   $('#top-user').hidden = false;
   $('#top-user').textContent = p.name.split(' ')[0];
-  state.cal = await loadCalendar(api, state.year);
+  state.cal = await loadCalendar(api, state.year, true);
   fillProfile($('#form-profile'), p);
   fillSender();
   $('#profile-email').textContent = 'Signed in as ' + user.email;
@@ -208,6 +231,7 @@ async function enter(user) {
   drawHome();
   alertsButton();
   $('#class-reminders').checked = p.classReminders !== false;
+  drawBlocked();
   if (!DEMO && (NATIVE ? (await pushState()) === 'granted' : webPushReady() && Notification.permission === 'granted')) turnOnPush(true);
 }
 
@@ -219,6 +243,8 @@ function onProfile(p) {
   if (blocked(p)) { stopAll(); return; }
   if (state.member) watchGroups();
   fillProfile($('#form-profile'), state.profile);
+  drawBlocked();
+  if (state.member && state.view === 'menu') drawMenu();
   if (state.view === 'pay' && !!p.feesExempt !== !!state.wasExempt) drawPay();
   state.wasExempt = !!p.feesExempt;
   if (p.grade && oldBelt && p.grade !== oldBelt) {
@@ -333,7 +359,7 @@ function unreadIn(ch) {
   if (!state.member) return 0;
   if (ch === 'notices') return myNotices().filter(n => n.createdAt > (state.profile.lastRead || 0)).length;
   if (ch === 'sensei') return Object.keys(state.dms || {}).reduce((n, k) => n + dmUnread(k), 0);
-  return state[ch].filter(m => m.uid !== state.user.uid && m.createdAt > seenAt(ch)).length;
+  return state[ch].filter(m => m.uid !== state.user.uid && !isBlocked(m) && m.createdAt > seenAt(ch)).length;
 }
 function unread() { return ['notices', 'group', 'journal', 'sensei'].reduce((n, ch) => n + unreadIn(ch), 0); }
 function drawBadge() {
@@ -432,8 +458,11 @@ function drawMenu() {
   const isNew = at => since !== null && at > since;
   let html;
   if (ch === 'notices') html = myNotices().slice().reverse().map(n => noticeHTML(n, isNew(n.createdAt) || n.createdAt > (state.profile.lastRead || 0)));
-  else if (ch === 'sensei') html = state.thread.map(m => messageHTML(m, m.from === 'student', false, m.from === 'student'));
-  else html = state[ch].map(m => { const mine = m.uid === state.user.uid; return messageHTML(m, mine, mine, mine); });
+  else if (ch === 'sensei') html = state.thread.map(m => messageHTML(m, m.from === 'student', false, m.from === 'student', { report: m.from === 'coach' && m.kind !== 'fees' }));
+  else html = state[ch].filter(m => !isBlocked(m)).map(m => {
+    const mine = m.uid === state.user.uid;
+    return messageHTML(m, mine, mine, mine, { report: !mine, block: !mine && m.from === 'student' && !!m.uid });
+  });
   const empty = { notices: 'No notices yet. When Sensei sends one, it will appear here.', group: 'No messages yet — say hello to everyone!', journal: 'Nothing logged yet. After you train, share what you practised.', sensei: 'No messages yet. You can message Sensei privately here.' }[ch];
   const feed = $('#menu-feed');
   // Keep following the conversation if they were already at the latest message.
@@ -452,9 +481,75 @@ function scrollFeed() {
   });
 }
 $('#menu-feed').addEventListener('click', async e => {
+  const rep = e.target.closest('[data-reportmsg]');
+  if (rep) return openReport(rep.dataset.reportmsg);
+  const blk = e.target.closest('[data-blockuid]');
+  if (blk) return blockStudent(blk.dataset.blockuid, blk.dataset.blockname);
   const b = e.target.closest('[data-delmsg]');
   if (!b || !confirm('Delete your message?')) return;
   try { await api.deleteChannelMessage(state.channel, b.dataset.delmsg); } catch (err) { toast(errorText(err), 'bad'); }
+});
+
+// ---- Report and Block (other people's messages) ----
+// Blocking a student hides their group chat and journal posts for you (users/{uid}.blocked).
+const isBlocked = m => m.from === 'student' && !!(((state.profile || {}).blocked || {})[m.uid]);
+async function blockStudent(uid, name) {
+  if (!uid || !confirm(`Block ${name}? You won’t see their posts in the group chat or training journal. You can unblock them in your Profile.`)) return;
+  try {
+    const blocked = { ...(state.profile.blocked || {}), [uid]: name };
+    await api.setBlocked(state.user.uid, blocked);
+    state.profile.blocked = blocked;
+    drawMenu(); drawBlocked();
+    toast(`${name} is blocked. To tell the head Sensei about a message, use Report.`);
+  } catch (err) { toast(errorText(err), 'bad'); }
+}
+function drawBlocked() {
+  const list = Object.entries((state.profile || {}).blocked || {});
+  $('#blocked-card').hidden = !list.length;
+  $('#blocked-list').innerHTML = list.map(([uid, name]) => `<li>${esc(name)} <button type="button" class="linkish" data-unblock="${esc(uid)}">Unblock</button></li>`).join('');
+}
+$('#blocked-list').addEventListener('click', async e => {
+  const b = e.target.closest('[data-unblock]');
+  if (!b) return;
+  const blocked = { ...(state.profile.blocked || {}) };
+  delete blocked[b.dataset.unblock];
+  try { await api.setBlocked(state.user.uid, blocked); state.profile.blocked = blocked; drawBlocked(); drawMenu(); toast('Unblocked'); } catch (err) { toast(errorText(err), 'bad'); }
+});
+
+let reporting = null;
+function openReport(id) {
+  const ch = state.channel;
+  const m = (ch === 'sensei' ? state.thread : state[ch] || []).find(x => x.id === id);
+  if (!m) return;
+  const tid = threadId(state.user.uid, state.dmKey);
+  reporting = { m, where: ch === 'sensei' ? 'chat' : ch, path: ch === 'sensei' ? `chats/${tid}/messages/${m.id}` : `channels/${ch}/messages/${m.id}` };
+  const form = $('#form-report');
+  form.reset();
+  showError(form);
+  $('#report-quote').innerHTML = `<b>${esc(m.author || (m.from === 'coach' ? 'Sensei' : 'Student'))}:</b> ${esc(m.text)}`;
+  $('#report-dialog').showModal();
+}
+$('#form-report').addEventListener('submit', async e => {
+  if (e.submitter && e.submitter.value === 'cancel') return;
+  e.preventDefault();
+  const form = e.target;
+  const reason = (form.querySelector('[name=reason]:checked') || {}).value;
+  if (!reason) return showError(form, 'Please choose what’s wrong with it.');
+  if (!reporting) return;
+  const { m, where, path } = reporting;
+  const details = form.details.value.trim();
+  await busy(form.querySelector('[value=send]'), async () => {
+    try {
+      await api.reportMessage({
+        by: state.user.uid, byName: (state.profile.name || '').slice(0, 120), where, path,
+        author: (m.author || (m.from === 'coach' ? 'Sensei' : 'Student')).slice(0, 120), authorUid: String(m.uid || '').slice(0, 128),
+        text: String(m.text || '').slice(0, 2000), reason: (reason + (details ? ' – ' + details : '')).slice(0, 500),
+      });
+      $('#report-dialog').close();
+      reporting = null;
+      toast('Thank you. The head Sensei will look at this within 24 hours.');
+    } catch (err) { showError(form, errorText(err)); }
+  });
 });
 wireEdits($('#menu-feed'), {
   find: id => (state.channel === 'sensei' ? state.thread : state[state.channel] || []).find(m => m.id === id),
@@ -521,8 +616,10 @@ async function drawPay() {
   if (p.feesExempt) $('#pay-intro').innerHTML = `<b>Sensei has marked ${esc(p.name)} as exempt, so you don’t need to pay fees.</b> You can still pay below if you want to.<br>` + $('#pay-intro').innerHTML;
 
   // One card per class, with two choices: per lesson, and per month at the student's level.
+  // PayPal opens in the browser; in the phone apps it then comes back to a page with a button that opens the app.
+  const back = NATIVE ? STUDENT_URL + 'paid.html' : STUDENT_URL;
   const option = (f, label, sub) => !f ? '' : paypal
-    ? `<a class="fee-option" href="${esc(paypalLink(paypal, f, p.name, track, STUDENT_URL))}" target="_blank" rel="noopener"
+    ? `<a class="fee-option" href="${esc(paypalLink(paypal, f, p.name, track, back))}" target="_blank" rel="noopener"
         aria-label="Pay ${money(f.price)} ${label.toLowerCase()} for ${esc(FEE_GROUPS[f.group])} with PayPal or card">
         <span class="fee-option-label">${label}</span><b>${money(f.price)}</b><small>${esc(sub)}</small><span class="btn btn--paypal btn--sm">Pay ${money(f.price)}</span></a>`
     : `<div class="fee-option"><span class="fee-option-label">${label}</span><b>${money(f.price)}</b><small>${esc(sub)}</small></div>`;
@@ -709,6 +806,8 @@ async function drawCalendar(scroll) {
   const years = await calendarYears(api);
   $('#cal-year-select').innerHTML = [...new Set([...years, state.year])].sort().map(y => `<option${y === state.year ? ' selected' : ''}>${y}</option>`).join('');
   $('#cal-empty').hidden = !!cal;
+  $('#cal-provisional').hidden = !(cal && cal.provisional);
+  $('#cal-provisional').textContent = `Sensei hasn’t published the ${state.year} calendar yet, so this shows every Thursday for now. Closures, gradings and black belt classes will appear once it’s published.`;
   $('#cal-grid').hidden = !cal;
   $('#cal-keydates').hidden = !cal;
   $('#cal-timings').hidden = !(cal && cal.timings && cal.timings.length);
@@ -721,7 +820,7 @@ async function drawCalendar(scroll) {
     days: cal.days, profile: state.profile, onlyMine: $('#only-mine').checked, onDay: openDay, marks: attendanceMarks(),
   });
   drawKeyDates(cal.days);
-  $('#cal-timings').innerHTML = '<h2>Class times</h2><ul>' + cal.timings.map(t => {
+  $('#cal-timings').innerHTML = '<h2>Class times</h2><ul>' + (cal.timings || []).map(t => {
     const head = /^[A-Z][A-Z ]+(\(|—|$)/.test(t);
     return `<li${head ? ' class="th"' : ''}>${esc(t)}</li>`;
   }).join('') + '</ul>';
@@ -752,7 +851,7 @@ function drawKeyDates(days) {
 $('#only-mine').addEventListener('change', () => drawCalendar());
 $('#cal-year-select').addEventListener('change', async e => {
   state.year = +e.target.value;
-  state.cal = await loadCalendar(api, state.year);
+  state.cal = await loadCalendar(api, state.year, true);
   drawCalendar();
 });
 $('#ics').addEventListener('click', async () => {
@@ -943,7 +1042,11 @@ function drawLicence() {
     ? 'Sensei keeps this up to date after each grading. Your name, email and phone come from your profile.'
     : 'Sensei hasn’t filled in your licence yet. It will appear here once they have.';
 }
-$('#lic-print').addEventListener('click', () => print());
+// In the phone apps window.print() does nothing, so the app's own Print plugin opens the print screen.
+$('#lic-print').addEventListener('click', async () => {
+  if (!NATIVE) return print();
+  try { await printPage('EmptyHands licence'); } catch (err) { console.warn(err); toast('Couldn’t open the print screen. Please try again.', 'bad'); }
+});
 
 // ---- My medals: awarded by Sensei ----
 function drawMedals() {
@@ -980,4 +1083,25 @@ $('#dm-pick').addEventListener('click', e => {
   state.thread = d.msgs; state.chat = d.chat;
   editing.id = null; state.prevRead = null;
   drawMenu(); markRead(); scrollFeed();
+});
+
+// ---- phone apps ----
+// The syllabus PDF isn't inside the app: open the website's copy in the phone's browser.
+if (NATIVE) $('#syl-pdf').href = STUDENT_URL + 'assets/docs/EmptyHands-Syllabus.pdf';
+// The privacy policy and community rules open in the phone's browser, so the app's Back button keeps working.
+if (NATIVE) $$('a[href^="privacy.html"]').forEach(a => { a.href = STUDENT_URL + a.getAttribute('href'); a.target = '_blank'; });
+// Android's Back button: close what's open, else go back to Home, else leave the app.
+onBack(() => {
+  const dialogs = $$('dialog[open]');
+  const top = dialogs[dialogs.length - 1];
+  if (top) { if (top.id !== 'rules-dialog') top.close(); return; }
+  if (editing.id) { editing.id = null; drawMenu(); return; }
+  if (!$('#tabbar').hidden && state.view && state.view !== 'home') { show('home'); history.replaceState(null, '', '#home'); return; }
+  leaveApp();
+});
+// Back in the app (e.g. after paying with PayPal): show the latest.
+onResume(() => {
+  if (!state.user || !state.profile) return;
+  if (state.view === 'pay') drawPay();
+  drawHome();
 });

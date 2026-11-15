@@ -9,7 +9,7 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         // CI sets VERSION_CODE so every upload to Google Play gets a higher number.
         versionCode Integer.parseInt(System.getenv('VERSION_CODE') ?: '1')
-        versionName "1.0"
+        versionName "1.0." + (System.getenv('VERSION_CODE') ?: '0')
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
