@@ -2,7 +2,7 @@
 
 The app for EmptyHands KaraTe School students: an account, the year's dojo calendar with the dates that matter to them, a countdown to the next class, and notices from their coaches.
 
-**Live at <https://rauf-mushtaq.github.io/emptyhands.student/>**. The coaches' side is [emptyhands.control.panel](https://github.com/rauf-mushtaq/emptyhands.control.panel), whose README covers the Firebase setup. Both use the same Firebase project.
+**Live at <https://app.emptyhands.co.uk/>**. The coaches' side is [emptyhands.control.panel](https://github.com/rauf-mushtaq/emptyhands.control.panel), whose README covers the Firebase setup. Both use the same Firebase project.
 
 ## What students get
 
