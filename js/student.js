@@ -667,15 +667,15 @@ async function drawPay() {
   // Apple Pay shows on iPhone, iPad and Mac (Safari, and the iPhone app); Google Pay on Android.
   const apple = 'ApplePaySession' in window || document.documentElement.classList.contains('is-ios');
   const android = /Android/i.test(navigator.userAgent);
-  const ways = (apple ? 'Apple Pay, a card' : android ? 'Google Pay, a card' : 'a card') + (paypal ? ' or PayPal' : '');
+  const ways = (apple ? 'Apple Pay, a card' : android ? 'Google Pay, a card' : 'a card') + (cards || paypal ? ' or PayPal' : '');
   $('#pay-intro').innerHTML = cards
     ? `<b>Choose per lesson or per month.</b> Pay with ${ways.replace(/, a card$/, ' or a card')}. ${who}`
     : paypal ? `<b>Choose per lesson or per month.</b> PayPal opens with the amount filled in — pay with a card or your PayPal account. ${who}`
     : 'Online payment isn’t set up yet — please pay Sensei at the dojo for now.';
   if (p.feesExempt) $('#pay-intro').innerHTML = `<b>Sensei has marked ${esc(p.name)} as exempt, so you don’t need to pay fees.</b> You can still pay below if you want to.<br>` + $('#pay-intro').innerHTML;
   $('#pay-note').textContent = (cards
-    ? 'Card, Apple Pay and Google Pay payments go straight to the EmptyHands bank account through Stripe’s secure payment page. We never see your card details. '
-    : '') + (paypal ? `PayPal payments go straight to EmptyHands${cards ? '' : ' — you don’t need a PayPal account, you can pay by debit or credit card'}. ` : '')
+    ? 'Payments go straight to the EmptyHands bank account through Stripe’s secure payment page. We never see your card or PayPal details. '
+    : paypal ? 'PayPal payments go straight to EmptyHands — you don’t need a PayPal account, you can pay by debit or credit card. ' : '')
     + 'The student’s name is attached so Sensei knows who has paid, and the payment shows here a moment later. Classes can’t be carried forward.';
 
   // One card per class, with two choices: per lesson, and per month at the student's level.
@@ -684,12 +684,12 @@ async function drawPay() {
   const head = (f, label, sub) => `<span class="fee-option-label">${label}</span><b>${money(f.price)}</b><small>${esc(sub)}</small>`;
   const what = (f, label) => `${money(f.price)} ${label.toLowerCase()} for ${esc(FEE_GROUPS[f.group] || 'Karate')}`;
   const option = (f, label, sub) => !f ? ''
-    // Each fee: an Apple Pay button (Apple devices) or a card button, and a PayPal button. Apple Pay,
-    // Google Pay and cards all go through Stripe's payment page; PayPal through PayPal.
+    // Each fee: an Apple Pay button (Apple devices) or a card button, and a PayPal button. All of them
+    // go through Stripe's payment page; if PayPal isn't connected in Stripe, the plain PayPal link is used.
     : cards ? `<div class="fee-option has-pay">${head(f, label, sub)}
         ${apple ? `<button type="button" class="btn btn--apple btn--sm" data-card="${esc(f.id)}" aria-label="Pay ${what(f, label)} with Apple Pay">\uF8FF Pay</button>`
           : `<button type="button" class="btn btn--seal btn--sm" data-card="${esc(f.id)}" aria-label="Pay ${what(f, label)} by card${android ? ' or Google Pay' : ''}">${android ? 'Google Pay or card' : 'Pay by card'}</button>`}
-        ${paypal ? `<a class="btn btn--paypal btn--sm" href="${esc(paypalLink(paypal, f, p.name, track, back))}" target="_blank" rel="noopener" aria-label="Pay ${what(f, label)} with PayPal">PayPal</a>` : ''}
+        <button type="button" class="btn btn--paypal btn--sm" data-card="${esc(f.id)}" data-method="paypal"${paypal ? ` data-fallback="${esc(paypalLink(paypal, f, p.name, track, back))}"` : ''} aria-label="Pay ${what(f, label)} with PayPal">PayPal</button>
         ${apple ? `<button type="button" class="fee-alt" data-card="${esc(f.id)}" aria-label="Pay ${what(f, label)} by card">or pay by card</button>` : ''}</div>`
     : paypal ? `<a class="fee-option" href="${esc(paypalLink(paypal, f, p.name, track, back))}" target="_blank" rel="noopener"
         aria-label="Pay ${what(f, label)} with PayPal or card">${head(f, label, sub)}<span class="btn btn--paypal btn--sm">Pay ${money(f.price)}</span></a>`
@@ -708,8 +708,8 @@ async function drawPay() {
   }).join('') || '<p class="muted">There are no fees set up for your classes yet. Please ask Sensei how to pay.</p>';
 }
 
-// Card / Apple Pay / Google Pay: the function makes a Stripe payment page for the chosen fee and
-// we go to it. Stripe then comes back to the app with ?card=<session id> (or to paid.html in the phone apps).
+// Card / Apple Pay / Google Pay / PayPal: the function makes a Stripe payment page for the chosen fee
+// (PayPal-only for the PayPal button) and we go to it. Stripe then comes back to the app with ?card=<session id> (or to paid.html in the phone apps).
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-card]');
   if (!b) return;
@@ -717,10 +717,12 @@ document.addEventListener('click', async e => {
     try {
       const res = await fetch(CARD_API, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + await api.idToken() },
-        body: JSON.stringify({ action: 'checkout', fee: b.dataset.card, native: NATIVE }),
+        body: JSON.stringify({ action: 'checkout', fee: b.dataset.card, native: NATIVE, method: b.dataset.method || 'card' }),
       });
       const out = await res.json().catch(() => ({}));
-      if (!res.ok || !out.url) throw new Error(out.error || 'Card payments aren’t working right now. Please try again later, or pay at the dojo.');
+      // PayPal isn't connected in Stripe: use the plain PayPal link (it still records the payment).
+      if (out.fallback && b.dataset.fallback) { location.assign(b.dataset.fallback); return; }
+      if (!res.ok || !out.url) throw new Error(out.error || 'Online payments aren’t working right now. Please try again later, or pay at the dojo.');
       location.assign(out.url);
       await new Promise(r => setTimeout(r, 4000)); // keep the button busy while the payment page opens
     } catch (err) {
@@ -736,7 +738,7 @@ if (cardBack) {
   history.replaceState(null, '', location.pathname + '#pay');
   fetch(CARD_API, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'confirm', session: cardBack }) })
     .then(r => r.json())
-    .then(out => toast(out.paid ? `Thank you! ${money(out.amount)} paid${out.wallet === 'apple_pay' ? ' with Apple Pay' : out.wallet === 'google_pay' ? ' with Google Pay' : ' by card'}.` : 'The payment didn’t go through, so nothing was taken. You can try again.', out.paid ? 'ok' : 'bad'))
+    .then(out => toast(out.paid ? `Thank you! ${money(out.amount)} paid.` : 'The payment didn’t go through, so nothing was taken. You can try again.', out.paid ? 'ok' : 'bad'))
     .catch(() => toast('Thank you! Your payment will show here in a few minutes.'));
 }
 
