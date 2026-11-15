@@ -664,12 +664,8 @@ async function drawPay() {
   const levelName = { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' }[level];
   const classes = (p.disciplines || []).filter(g => FEE_GROUPS[g]);
   const who = `Paying for <b>${esc(p.name)}</b> (${esc(GRADES[p.grade] || 'No belt')}).`;
-  // Apple Pay shows on iPhone, iPad and Mac (Safari, and the iPhone app); Google Pay on Android.
-  const apple = 'ApplePaySession' in window || document.documentElement.classList.contains('is-ios');
-  const android = /Android/i.test(navigator.userAgent);
-  const ways = (apple ? 'Apple Pay, a card' : android ? 'Google Pay, a card' : 'a card') + (cards || paypal ? ' or PayPal' : '');
   $('#pay-intro').innerHTML = cards
-    ? `<b>Choose per lesson or per month.</b> Pay with ${ways.replace(/, a card$/, ' or a card')}. ${who}`
+    ? `<b>Choose per lesson or per month.</b> Pay with Apple Pay, Google Pay, a card or PayPal. ${who}`
     : paypal ? `<b>Choose per lesson or per month.</b> PayPal opens with the amount filled in — pay with a card or your PayPal account. ${who}`
     : 'Online payment isn’t set up yet — please pay Sensei at the dojo for now.';
   if (p.feesExempt) $('#pay-intro').innerHTML = `<b>Sensei has marked ${esc(p.name)} as exempt, so you don’t need to pay fees.</b> You can still pay below if you want to.<br>` + $('#pay-intro').innerHTML;
@@ -684,14 +680,13 @@ async function drawPay() {
   const head = (f, label, sub) => `<span class="fee-option-label">${label}</span><b>${money(f.price)}</b><small>${esc(sub)}</small>`;
   const what = (f, label) => `${money(f.price)} ${label.toLowerCase()} for ${esc(FEE_GROUPS[f.group] || 'Karate')}`;
   const option = (f, label, sub) => !f ? ''
-    // Each fee: an Apple Pay button (Apple devices), a Google Pay button (Android) or a card button, and a PayPal button. All of them
-    // go through Stripe's payment page; if PayPal isn't connected in Stripe, the plain PayPal link is used.
+    // Each fee: an Apple Pay / Google Pay button, a PayPal button and "or pay by card". All of them go
+    // through Stripe's payment page, which offers Apple Pay on Apple devices and Google Pay on Android and
+    // in Chrome. If PayPal isn't connected in Stripe, the plain PayPal link is used.
     : cards ? `<div class="fee-option has-pay">${head(f, label, sub)}
-        ${apple ? `<button type="button" class="btn btn--apple btn--sm" data-card="${esc(f.id)}" aria-label="Pay ${what(f, label)} with Apple Pay">\uF8FF Pay</button>`
-          : android ? `<button type="button" class="btn btn--apple btn--gpay btn--sm" data-card="${esc(f.id)}" aria-label="Pay ${what(f, label)} with Google Pay">Google Pay</button>`
-          : `<button type="button" class="btn btn--seal btn--sm" data-card="${esc(f.id)}" aria-label="Pay ${what(f, label)} by card">Pay by card</button>`}
+        <button type="button" class="btn btn--wallet btn--sm" data-card="${esc(f.id)}" aria-label="Pay ${what(f, label)} with Apple Pay or Google Pay"><span class="wallet-names"><span>Apple Pay</span><span>Google Pay</span></span></button>
         <button type="button" class="btn btn--paypal btn--sm" data-card="${esc(f.id)}" data-method="paypal"${paypal ? ` data-fallback="${esc(paypalLink(paypal, f, p.name, track, back))}"` : ''} aria-label="Pay ${what(f, label)} with PayPal">PayPal</button>
-        ${apple || android ? `<button type="button" class="fee-alt" data-card="${esc(f.id)}" aria-label="Pay ${what(f, label)} by card">or pay by card</button>` : ''}</div>`
+        <button type="button" class="fee-alt" data-card="${esc(f.id)}" aria-label="Pay ${what(f, label)} by card">or pay by card</button></div>`
     : paypal ? `<a class="fee-option" href="${esc(paypalLink(paypal, f, p.name, track, back))}" target="_blank" rel="noopener"
         aria-label="Pay ${what(f, label)} with PayPal or card">${head(f, label, sub)}<span class="btn btn--paypal btn--sm">Pay ${money(f.price)}</span></a>`
     : `<div class="fee-option">${head(f, label, sub)}</div>`;
