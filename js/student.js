@@ -325,8 +325,9 @@ async function watchSenseiChats() {
   if (!state.member || state.user.uid !== uid) return;
   state.senseis = senseiList(OWNER_EMAILS, doc);
   state.dms = {};
-  state.dmKey = state.dmKey || 'all';
-  ['all', ...state.senseis.map(x => x.key)].forEach(key => {
+  // One private chat that every Sensei shares (no choosing a particular Sensei).
+  state.dmKey = 'all';
+  ['all'].forEach(key => {
     state.dms[key] = { msgs: [], chat: null };
     const tid = threadId(uid, key);
     state.stops.push(api.watchThread(tid, list => onList('thread:' + key, list)));
@@ -339,7 +340,8 @@ function senseiName(key) { const s = (state.senseis || []).find(x => x.key === k
 function drawPicker() {
   const box = $('#dm-pick');
   if (!box) return;
-  box.hidden = state.channel !== 'sensei' || !(state.senseis || []).length;
+  box.hidden = true; // students message every Sensei in one chat
+  return;
   box.innerHTML = [['all', 'All Sensei'], ...(state.senseis || []).map(x => [x.key, x.name])].map(([k, n]) =>
     `<button type="button" class="chip" role="tab" data-dm="${esc(k)}" aria-selected="${k === state.dmKey}">${esc(n)}${dmUnread(k) && k !== state.dmKey ? '<span class="dot"></span>' : ''}</button>`).join('');
 }
@@ -446,7 +448,7 @@ const CHANNELS = {
   notices: { intro: 'Notices from Sensei. Only Sensei can post here.' },
   group: { intro: '', placeholder: 'Message the group…' },
   journal: { intro: 'Your training journal: share what you practised, so Sensei and the group can see how you’re getting on.', placeholder: 'What did you practise today? e.g. Heian Shodan ×5, kihon 20 min' },
-  sensei: { intro: 'Private messages between you and every Sensei. Choose a Sensei above to message just them.', placeholder: 'Message Sensei…' },
+  sensei: { intro: 'Message Sensei privately. Only Sensei can see these messages, and any Sensei can reply.', placeholder: 'Message Sensei privately…' },
 };
 $('#rec-name').textContent = RECOMMENDED.name;
 $('#rec-about').textContent = RECOMMENDED.about;
@@ -492,7 +494,6 @@ function drawMenu() {
   drawGroupPick();
   $('#form-chat').hidden = ch === 'notices' || (ch === 'group' && !cid);
   $('#chat-text').placeholder = ch === 'group' ? `Message the ${cname} group…` : CHANNELS[ch].placeholder || '';
-  if (ch === 'sensei') $('#chat-text').placeholder = 'Message ' + (state.dmKey === 'all' ? 'all Sensei' : senseiName(state.dmKey)) + '…';
   $('#journal-phrases').hidden = ch !== 'journal';
   const since = state.prevRead && state.prevRead.ch === cid ? state.prevRead.at : null;
   const isNew = at => since !== null && at > since;
