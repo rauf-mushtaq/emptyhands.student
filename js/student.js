@@ -684,13 +684,14 @@ async function drawPay() {
   const head = (f, label, sub) => `<span class="fee-option-label">${label}</span><b>${money(f.price)}</b><small>${esc(sub)}</small>`;
   const what = (f, label) => `${money(f.price)} ${label.toLowerCase()} for ${esc(FEE_GROUPS[f.group] || 'Karate')}`;
   const option = (f, label, sub) => !f ? ''
-    // Each fee: an Apple Pay button (Apple devices) or a card button, and a PayPal button. All of them
+    // Each fee: an Apple Pay button (Apple devices), a Google Pay button (Android) or a card button, and a PayPal button. All of them
     // go through Stripe's payment page; if PayPal isn't connected in Stripe, the plain PayPal link is used.
     : cards ? `<div class="fee-option has-pay">${head(f, label, sub)}
         ${apple ? `<button type="button" class="btn btn--apple btn--sm" data-card="${esc(f.id)}" aria-label="Pay ${what(f, label)} with Apple Pay">\uF8FF Pay</button>`
-          : `<button type="button" class="btn btn--seal btn--sm" data-card="${esc(f.id)}" aria-label="Pay ${what(f, label)} by card${android ? ' or Google Pay' : ''}">${android ? 'Google Pay or card' : 'Pay by card'}</button>`}
+          : android ? `<button type="button" class="btn btn--apple btn--gpay btn--sm" data-card="${esc(f.id)}" aria-label="Pay ${what(f, label)} with Google Pay">Google Pay</button>`
+          : `<button type="button" class="btn btn--seal btn--sm" data-card="${esc(f.id)}" aria-label="Pay ${what(f, label)} by card">Pay by card</button>`}
         <button type="button" class="btn btn--paypal btn--sm" data-card="${esc(f.id)}" data-method="paypal"${paypal ? ` data-fallback="${esc(paypalLink(paypal, f, p.name, track, back))}"` : ''} aria-label="Pay ${what(f, label)} with PayPal">PayPal</button>
-        ${apple ? `<button type="button" class="fee-alt" data-card="${esc(f.id)}" aria-label="Pay ${what(f, label)} by card">or pay by card</button>` : ''}</div>`
+        ${apple || android ? `<button type="button" class="fee-alt" data-card="${esc(f.id)}" aria-label="Pay ${what(f, label)} by card">or pay by card</button>` : ''}</div>`
     : paypal ? `<a class="fee-option" href="${esc(paypalLink(paypal, f, p.name, track, back))}" target="_blank" rel="noopener"
         aria-label="Pay ${what(f, label)} with PayPal or card">${head(f, label, sub)}<span class="btn btn--paypal btn--sm">Pay ${money(f.price)}</span></a>`
     : `<div class="fee-option">${head(f, label, sub)}</div>`;
