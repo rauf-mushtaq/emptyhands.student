@@ -151,7 +151,7 @@ async function onAuth(user) {
   try { state.profile = await api.getProfile(user.uid); } catch (err) { toast(errorText(err), 'bad'); }
   if (blocked(state.profile)) return;
   if (!state.profile && await isCoach(user)) {
-    return message('You’re signed in as Sensei', `<b>${esc(user.email)}</b> is a Sensei account. Open the <a href="${COACH_URL}" target="_blank" rel="noopener">Sensei panel</a>, or sign out to use the student app.`);
+    return message('You’re signed in as Sensei', `<b>${esc(user.email)}</b> is a Sensei account. Open the <a href="${COACH_URL}" target="_blank" rel="noopener">Sensei panel</a>, or sign out to use the EmptyHands Portal.`);
   }
   if (!state.profile) {
     // Signed in but no profile (e.g. sign-up interrupted): ask for details again.
@@ -409,7 +409,7 @@ function drawBadge() {
   const todo = state.member ? myHomework().filter(h => !isDone(h)).length : 0;
   $('#hw-badge').hidden = !todo;
   $('#hw-badge').textContent = todo > 9 ? '9+' : todo;
-  document.title = (n ? `(${n}) ` : '') + 'EmptyHands · Student app';
+  document.title = (n ? `(${n}) ` : '') + 'EmptyHands Portal';
 }
 // Opening Chats: if the open channel has nothing new but another one does (another class, the
 // journal, notices or a Sensei chat), go to the one with the newest unread message, so reading it
@@ -1093,7 +1093,7 @@ async function alertsButton() {
   else if (webPushReady()) {
     can = !on && Notification.permission !== 'denied';
     status = on ? 'On for this device.' : Notification.permission === 'denied' ? 'Blocked in your browser settings. Allow notifications for this site to turn them on.' : 'Off for this device.';
-  } else if (isIOS && !standalone()) status = 'On iPhone and iPad, add EmptyHands Student to your home screen first, then turn on notifications from there.';
+  } else if (isIOS && !standalone()) status = 'On iPhone and iPad, add EmptyHands Portal to your home screen first, then turn on notifications from there.';
   else status = 'Notifications aren’t available on this device yet. You’ll still see everything when you open the app.';
   $$('[data-notify-on]').forEach(b => { b.hidden = !can; });
   $('#notify-status').textContent = status;
@@ -1124,7 +1124,7 @@ function installButtons() {
   $$('[data-install]').forEach(b => { b.hidden = NATIVE || standalone() || !(installEvent || isIOS); });
 }
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvent = e; installButtons(); });
-addEventListener('appinstalled', () => { installEvent = null; installButtons(); $('#install-dialog').open && $('#install-dialog').close(); toast('Installed — open EmptyHands Student from your home screen.'); });
+addEventListener('appinstalled', () => { installEvent = null; installButtons(); $('#install-dialog').open && $('#install-dialog').close(); toast('Installed — open EmptyHands Portal from your home screen.'); });
 function openInstall() {
   if (NATIVE || standalone()) return;
   $('#install-android').hidden = !installEvent;

@@ -1,4 +1,4 @@
-# EmptyHands student app
+# EmptyHands Portal (student app)
 
 The app for EmptyHands KaraTe School students: an account, the year's dojo calendar with the dates that matter to them, a countdown to the next class, and notices from their coaches.
 
