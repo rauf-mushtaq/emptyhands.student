@@ -218,6 +218,10 @@ async function enter(user) {
   $('#top-user').hidden = false;
   $('#top-user').textContent = p.name.split(' ')[0];
   state.cal = await loadCalendar(api, state.year, true);
+  // Home and "next class" look ahead into next year's calendar too, once it's published or bundled,
+  // so in December the first class of the new year shows instead of "No dates left".
+  const ahead = await loadCalendar(api, state.year + 1);
+  state.homeDays = { ...((state.cal && state.cal.days) || {}), ...((ahead && ahead.days) || {}) };
   fillProfile($('#form-profile'), p);
   fillSender();
   $('#profile-email').textContent = 'Signed in as ' + user.email;
@@ -844,7 +848,7 @@ function heroSlides() {
   if (award && Date.now() - award.createdAt < 30 * 864e5) {
     slides.unshift({ title: 'Nice work!', text: `You’ve earned a medal: ${esc(award.title)}`, art: `<span class="hero-emoji">${(MEDALS[award.medal] || MEDALS.star).icon}</span>`, go: 'medals' });
   }
-  const days = (state.cal && state.cal.days) || {};
+  const days = state.homeDays || (state.cal && state.cal.days) || {};
   const nextClass = upcoming(days, p, 7).find(d => ['training', 'blackbelt', 'grading'].includes(d.type));
   if (nextClass) slides.push({ title: whenText(nextClass.key) === 'Today' ? 'Class today' : 'Next class', text: `${TYPES[nextClass.type].label}, ${shortDate(nextClass.key)}`, art: '<span class="hero-kanji">道</span>', go: 'calendar' });
   if (state.member) {
@@ -893,7 +897,7 @@ function drawHome() {
   $('#side-belt').textContent = GRADES[p.grade] || '';
   drawHero();
 
-  const days = (state.cal && state.cal.days) || {};
+  const days = state.homeDays || (state.cal && state.cal.days) || {};
   const next = upcoming(days, p, 7);
   const nextClass = next.find(d => d.type === 'training' || d.type === 'blackbelt' || d.type === 'grading');
   const closedSoon = next.find(d => d.type === 'closed' && (!nextClass || d.key < nextClass.key));

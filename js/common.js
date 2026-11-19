@@ -1,5 +1,6 @@
 // Shared by the student app and the coach panel: labels, calendar rendering, helpers.
-import { CALENDAR_2026 } from './calendar-data.js';
+import { CALENDAR_2026, CALENDAR_2027 } from './calendar-data.js';
+const BUNDLED = { 2026: CALENDAR_2026, 2027: CALENDAR_2027 };
 
 export const TYPES = {
   training: { label: 'Dojo training', note: 'Thursday classes at the Ilford dojo' },
@@ -292,14 +293,14 @@ export function noticeIsFor(n, p) {
   return true;
 }
 
-// The published calendar for a year, falling back to the bundled 2026 calendar.
+// The published calendar for a year, falling back to the bundled 2026 or 2027 calendar.
 // provisional: for a later year Sensei hasn't published yet, show every Thursday as a class day
 // (the student app uses this, so it isn't empty in January; the Sensei panel shows a draft instead).
 export async function loadCalendar(api, year, provisional = false) {
   let cal = null;
   try { cal = await api.getCalendar(year); } catch (e) { console.warn(e); }
-  if (!cal && +year === 2026) cal = structuredClone(CALENDAR_2026);
-  if (!cal && provisional && +year > 2026) cal = provisionalCalendar(year);
+  if (!cal && BUNDLED[+year]) cal = structuredClone(BUNDLED[+year]);
+  if (!cal && provisional && +year > 2027) cal = provisionalCalendar(year);
   return cal;
 }
 export function provisionalCalendar(year) {
@@ -312,7 +313,7 @@ export function provisionalCalendar(year) {
 export async function calendarYears(api) {
   let years = [];
   try { years = await api.listCalendarYears(); } catch (e) { console.warn(e); }
-  return [...new Set([2026, new Date().getFullYear(), ...years])].sort((a, b) => a - b);
+  return [...new Set([...Object.keys(BUNDLED).map(Number), new Date().getFullYear(), ...years])].sort((a, b) => a - b);
 }
 
 // Renders the 12-month grid. opts: { days, profile, onlyMine, editable, onDay(key, button) }
