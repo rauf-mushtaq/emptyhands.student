@@ -959,9 +959,7 @@ async function drawCalendar(scroll) {
   $('#cal-keydates').hidden = !cal;
   $('#cal-timings').hidden = !(cal && cal.timings && cal.timings.length);
   $('#ics').hidden = !cal;
-  $('#cal-pdf').hidden = !(cal && cal.pdf);
   if (!cal) return;
-  if (cal.pdf) $('#cal-pdf').href = cal.pdf;
   watchRegisterYear();
   renderYear($('#cal-grid'), state.year, {
     days: cal.days, profile: state.profile, onlyMine: $('#only-mine').checked, onDay: openDay, marks: attendanceMarks(),
