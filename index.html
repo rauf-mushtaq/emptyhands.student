@@ -98,6 +98,11 @@
       <h2 class="sec-title">Latest from Sensei <button class="linkish" data-go="menu">See all</button></h2>
       <div id="home-notices"></div>
 
+      <div id="home-kata" hidden>
+        <h2 class="sec-title">Kata videos <button class="linkish" data-go="videos">See all</button></h2>
+        <div class="kata-row" id="kata-row"></div>
+      </div>
+
       <h2 class="sec-title sec-title--brand">Explore</h2>
       <div class="explore-row" id="explore"></div>
     </div>
@@ -109,7 +114,7 @@
       <button type="button" class="hero-round" id="menu-close" aria-label="Close menu"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
     <nav class="side-links">
       <button data-go="home">Home</button><button data-go="calendar">Calendar</button><button data-go="menu">EmptyHands chats</button>
-      <button data-go="homework">Homework</button><button data-go="syllabus">Syllabus</button><button data-go="pay">Pay fees</button>
+      <button data-go="homework">Homework</button><button data-go="syllabus">Syllabus</button><button data-go="videos">Kata videos</button><button data-go="pay">Pay fees</button>
       <button data-go="attendance">My attendance</button><button data-go="medals">My medals</button><button data-go="licence">My licence</button><button data-go="profile">Profile &amp; notifications</button>
       <a href="https://emptyhands.co.uk/" target="_blank" rel="noopener">EmptyHands website</a>
     </nav>
@@ -201,7 +206,7 @@
   <section class="view" id="view-syllabus" hidden>
     <div class="view-head">
       <div><p class="eyebrow">10th Kyu to Shodan</p><h1>Syllabus</h1></div>
-      <div class="view-actions"><a class="btn btn--ghost btn--sm" id="syl-pdf" href="assets/docs/EmptyHands-Syllabus.pdf" target="_blank" rel="noopener">Open PDF</a></div>
+      <div class="view-actions"><button class="btn btn--ghost btn--sm" type="button" data-go="videos">Kata videos</button><a class="btn btn--ghost btn--sm" id="syl-pdf" href="assets/docs/EmptyHands-Syllabus.pdf" target="_blank" rel="noopener">Open PDF</a></div>
     </div>
     <p class="muted fine">The EmptyHands syllabus summary sheet. Pinch or zoom to read the details.</p>
     <div class="syllabus">
@@ -210,6 +215,16 @@
       <img src="assets/syllabus/page-3.webp" alt="Syllabus page 3" width="1323" height="1872" loading="lazy">
       <img src="assets/syllabus/page-4.webp" alt="Syllabus page 4" width="1323" height="1872" loading="lazy">
     </div>
+  </section>
+
+  <!-- Kata videos: Kanazawa Sensei performing the syllabus kata (each opens on YouTube) -->
+  <section class="view" id="view-videos" hidden>
+    <div class="view-head">
+      <div><p class="eyebrow">Practise at home</p><h1>Kata videos</h1></div>
+      <div class="view-actions"><button class="btn btn--ghost btn--sm" type="button" data-go="syllabus">Syllabus</button></div>
+    </div>
+    <p class="muted fine">Hirokazu Kanazawa Sensei (Shotokan, SKIF) performing each kata. Tap one to watch it on YouTube.</p>
+    <div id="kata-groups"></div>
   </section>
 
   <!-- Pay fees: card / Apple Pay / Google Pay (Stripe) and PayPal -->

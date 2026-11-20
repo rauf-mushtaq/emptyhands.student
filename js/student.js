@@ -2,6 +2,7 @@ import { backend, DEMO, isCoach, errorText } from './backend.js';
 import { COACH_URL, STUDENT_URL, SITE_URL, OWNER_EMAILS, RECOMMENDED, PAYPAL_AUTO_TRACK, firebaseConfig } from './config.js';
 import { NATIVE, pushState, enablePush, onPushTap, shareFile, printPage, onBack, leaveApp, onResume } from './native.js';
 import { webPushReady, webPushToken } from './webpush.js';
+import { KATA_GROUPS, KATA_BY, kataUrl } from './videos.js';
 import {
   $, $$, esc, TYPES, GRADES, AUDIENCES, CLASS_CHATS, CLASS_JOURNALS, classesFor, classChatName, renderYear, legendHTML, upcoming, loadCalendar, messageHTML, wireEdits, editing, licenceHTML, MEDALS, medalHTML, threadId, senseiList,
   calendarYears, isRelevant, noticeIsFor, homeworkIsFor, myAudiences, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
@@ -9,7 +10,7 @@ import {
   monthKey, monthName, isMonthly, payMethod, keyOf,
 } from './common.js';
 
-const VIEWS = ['home', 'calendar', 'menu', 'homework', 'syllabus', 'pay', 'licence', 'medals', 'attendance', 'profile'];
+const VIEWS = ['home', 'calendar', 'menu', 'homework', 'syllabus', 'videos', 'pay', 'licence', 'medals', 'attendance', 'profile'];
 const state = {
   user: null, profile: null, notices: [], thread: [], chat: null, cal: null,
   group: [], journal: [], homework: [], awards: [], channel: 'notices',
@@ -838,6 +839,14 @@ $('#explore').innerHTML = EXPLORE.map(x => {
     : `<a class="explore-card" href="${esc(x.href)}" target="_blank" rel="noopener">${inner}</a>`;
 }).join('');
 
+// Kata videos: a row on Home (the first group, for Karate students) and the Kata videos page.
+const kataCard = k => `<a class="kata-card" href="${esc(kataUrl(k))}" target="_blank" rel="noopener" aria-label="${esc(k.name)}, ${esc(KATA_BY)}: watch on YouTube">
+    <span class="kata-tile" aria-hidden="true"><span class="kata-jp" lang="ja">${esc(k.jp)}</span><span class="kata-play"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></span></span>
+    <b>${esc(k.name)}</b><small>Watch on YouTube</small></a>`;
+$('#kata-row').innerHTML = KATA_GROUPS[0].kata.map(kataCard).join('');
+$('#kata-groups').innerHTML = KATA_GROUPS.map(g => `<section class="kata-group"><h2>${esc(g.title)}</h2>
+  <div class="kata-grid">${g.kata.map(kataCard).join('')}</div></section>`).join('');
+
 let heroTimer;
 function heroSlides() {
   const p = state.profile;
@@ -895,6 +904,8 @@ function drawHome() {
   $('#hero-dojo').innerHTML = `${esc(p.dojo === 'epping' ? 'Epping' : p.dojo === 'both' ? 'Ilford & Epping' : 'Ilford')} <span aria-hidden="true">›</span>`;
   $('#side-name').textContent = p.name || '';
   $('#side-belt').textContent = GRADES[p.grade] || '';
+  // The kata row is for Karate students (and anyone who hasn't chosen their classes yet).
+  $('#home-kata').hidden = !(!classesFor(p).length || classesFor(p).includes('karate'));
   drawHero();
 
   const days = state.homeDays || (state.cal && state.cal.days) || {};
