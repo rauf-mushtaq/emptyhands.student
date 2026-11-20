@@ -1,11 +1,13 @@
-// Kata videos for students: Hirokazu Kanazawa Sensei (Shotokan, SKIF) performing the syllabus kata.
-// Shown on Home and on the Kata videos page. Each one opens on YouTube (the phone's YouTube app or
-// browser), so nothing from YouTube loads inside the app. id: the YouTube video id; t: start this
-// many seconds in; jp: the kata's name in Japanese, for the card.
-export const KATA_GROUPS = [
+// Karate videos for students: the syllabus kata, performed by Hirokazu Kanazawa Sensei (Shotokan,
+// SKIF), and kumite. Shown on the Karate videos page, with the first group as a row on Home. Each one
+// opens on YouTube (the phone's YouTube app or browser), so nothing from YouTube loads inside the app.
+// id: the YouTube video id; t: start this many seconds in; jp: the name in Japanese, for the card.
+const KANAZAWA = 'Hirokazu Kanazawa Sensei, Shotokan (SKIF)';
+export const VIDEO_GROUPS = [
   {
     title: 'Essential Syllabus Kata from Red to Black Belt',
-    kata: [
+    by: KANAZAWA,
+    videos: [
       { name: 'Heian Shodan', jp: '平安初段', id: 'lZyI9mtk924' },
       { name: 'Heian Nidan', jp: '平安二段', id: '_ZPODff5Vew' },
       { name: 'Heian Sandan', jp: '平安三段', id: '28T1JbwbjuE' },
@@ -18,7 +20,8 @@ export const KATA_GROUPS = [
   },
   {
     title: 'Essential Syllabus Kata for 2nd Dan Black Belt',
-    kata: [
+    by: KANAZAWA,
+    videos: [
       { name: 'Enpi', jp: '燕飛', id: 'vsOt9sMtgeA' },
       { name: 'Bassai-Sho', jp: '抜塞小', id: 'ki17srZIQHI', t: 31 },
       { name: 'Kanku-Sho', jp: '観空小', id: 'WOFf0xWEoUM' },
@@ -27,6 +30,14 @@ export const KATA_GROUPS = [
       { name: 'Jitte', jp: '十手', id: 'XivYh0vSMCQ' },
     ],
   },
+  {
+    title: 'Kumite',
+    videos: [
+      { name: 'Gohon Kumite', jp: '五本組手', id: '93LJZc-PcPQ' },
+      { name: 'Sanbon Kumite', jp: '三本組手', id: '6GBmwnQDyec' },
+      { name: 'Kihon Ippon Kumite', jp: '基本一本組手', id: 'L0wu2Xo87Qg' },
+      { name: 'Jiyu Ippon Kumite', jp: '自由一本組手', id: 'izcMJpd8XFQ' },
+    ],
+  },
 ];
-export const KATA_BY = 'Shotokan (SKIF) · Hirokazu Kanazawa';
-export const kataUrl = k => `https://www.youtube.com/watch?v=${encodeURIComponent(k.id)}${k.t ? `&t=${k.t}s` : ''}`;
+export const videoUrl = v => `https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}${v.t ? `&t=${v.t}s` : ''}`;

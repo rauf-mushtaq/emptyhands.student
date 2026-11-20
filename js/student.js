@@ -2,7 +2,7 @@ import { backend, DEMO, isCoach, errorText } from './backend.js';
 import { COACH_URL, STUDENT_URL, SITE_URL, OWNER_EMAILS, RECOMMENDED, PAYPAL_AUTO_TRACK, firebaseConfig } from './config.js';
 import { NATIVE, pushState, enablePush, onPushTap, shareFile, printPage, onBack, leaveApp, onResume } from './native.js';
 import { webPushReady, webPushToken } from './webpush.js';
-import { KATA_GROUPS, KATA_BY, kataUrl } from './videos.js';
+import { VIDEO_GROUPS, videoUrl } from './videos.js';
 import {
   $, $$, esc, TYPES, GRADES, AUDIENCES, CLASS_CHATS, CLASS_JOURNALS, classesFor, classChatName, renderYear, legendHTML, upcoming, loadCalendar, messageHTML, wireEdits, editing, licenceHTML, MEDALS, medalHTML, threadId, senseiList,
   calendarYears, isRelevant, noticeIsFor, homeworkIsFor, myAudiences, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
@@ -839,13 +839,14 @@ $('#explore').innerHTML = EXPLORE.map(x => {
     : `<a class="explore-card" href="${esc(x.href)}" target="_blank" rel="noopener">${inner}</a>`;
 }).join('');
 
-// Kata videos: a row on Home (the first group, for Karate students) and the Kata videos page.
-const kataCard = k => `<a class="kata-card" href="${esc(kataUrl(k))}" target="_blank" rel="noopener" aria-label="${esc(k.name)}, ${esc(KATA_BY)}: watch on YouTube">
-    <span class="kata-tile" aria-hidden="true"><span class="kata-jp" lang="ja">${esc(k.jp)}</span><span class="kata-play"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></span></span>
+// Karate videos: the first group (red to black belt kata) as a row on Home for Karate students,
+// and every group on the Karate videos page.
+const kataCard = (k, by) => `<a class="kata-card" href="${esc(videoUrl(k))}" target="_blank" rel="noopener" aria-label="${esc(k.name)}${by ? ', ' + esc(by) : ''}: watch on YouTube">
+    <span class="kata-tile" aria-hidden="true"><span class="kata-jp${k.jp.length > 4 ? ' kata-jp--long' : ''}" lang="ja">${esc(k.jp)}</span><span class="kata-play"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></span></span>
     <b>${esc(k.name)}</b><small>Watch on YouTube</small></a>`;
-$('#kata-row').innerHTML = KATA_GROUPS[0].kata.map(kataCard).join('');
-$('#kata-groups').innerHTML = KATA_GROUPS.map(g => `<section class="kata-group"><h2>${esc(g.title)}</h2>
-  <div class="kata-grid">${g.kata.map(kataCard).join('')}</div></section>`).join('');
+$('#kata-row').innerHTML = VIDEO_GROUPS[0].videos.map(k => kataCard(k, VIDEO_GROUPS[0].by)).join('');
+$('#kata-groups').innerHTML = VIDEO_GROUPS.map(g => `<section class="kata-group"><h2>${esc(g.title)}</h2>${g.by ? `<p class="muted fine">${esc(g.by)}</p>` : ''}
+  <div class="kata-grid">${g.videos.map(k => kataCard(k, g.by)).join('')}</div></section>`).join('');
 
 let heroTimer;
 function heroSlides() {
