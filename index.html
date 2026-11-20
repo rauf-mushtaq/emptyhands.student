@@ -124,16 +124,13 @@
   <!-- Calendar -->
   <section class="view" id="view-calendar" hidden>
     <div class="view-head">
-      <div>
-        <p class="eyebrow">Dojo calendar</p>
-        <h1><span id="cal-year"></span> calendar</h1>
-      </div>
-      <div class="view-actions">
-        <label class="sr-only" for="cal-year-select">Year</label>
-        <select id="cal-year-select"></select>
-      </div>
+      <div><p class="eyebrow">EmptyHands Karate School</p><h1>Dojo calendar <span id="cal-year"></span></h1></div>
     </div>
-    <div class="legend" id="cal-legend"></div>
+    <div class="cal-bar">
+      <div class="legend" id="cal-legend"></div>
+      <label class="sr-only" for="cal-year-select">Year</label>
+      <select id="cal-year-select"></select>
+    </div>
     <p class="muted fine cal-provisional" id="cal-provisional" hidden></p>
     <div class="cal-tools">
       <label class="switch"><input type="checkbox" id="only-mine" checked><span></span>Only dates relevant to me</label>
