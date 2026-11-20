@@ -253,9 +253,10 @@ function onProfile(p) {
   fillProfile($('#form-profile'), state.profile);
   drawBlocked();
   if (state.member && state.view === 'menu') drawMenu();
-  if (state.view === 'pay' && (!!p.feesExempt !== !!state.wasExempt || p.monthlyFee !== state.wasFee || p.grade !== oldBelt)) drawPay();
+  if (state.view === 'pay' && (!!p.feesExempt !== !!state.wasExempt || !!p.directDebit !== !!state.wasDD || p.monthlyFee !== state.wasFee || p.grade !== oldBelt)) drawPay();
   state.wasFee = p.monthlyFee;
   state.wasExempt = !!p.feesExempt;
+  state.wasDD = !!p.directDebit;
   if (p.grade && oldBelt && p.grade !== oldBelt) {
     toast('Sensei has updated your belt to ' + (GRADES[p.grade] || p.grade) + (p.grade === 'dan' ? ' — congratulations!' : '.'));
     drawHome(); drawCalendar(); drawHomework(); drawMenu();
@@ -700,6 +701,7 @@ async function drawPay() {
     : paypal ? `<b>Choose per lesson or per month.</b> PayPal opens with the amount filled in — pay with a card or your PayPal account. ${who}`
     : 'Online payment isn’t set up yet — please pay Sensei at the dojo for now.';
   if (p.feesExempt) $('#pay-intro').innerHTML = `<b>Sensei has marked ${esc(p.name)} as exempt, so you don’t need to pay fees.</b> You can still pay below if you want to.<br>` + $('#pay-intro').innerHTML;
+  if (!p.feesExempt && p.directDebit) $('#pay-intro').innerHTML = `<b>${esc(p.name)} pays by direct debit, so there’s nothing to pay here.</b> You can still pay for extras below if you need to.<br>` + $('#pay-intro').innerHTML;
   $('#pay-note').textContent = (cards
     ? 'Payments go straight to the EmptyHands bank account through Stripe’s secure payment page. We never see your card or PayPal details. '
     : paypal ? 'PayPal payments go straight to EmptyHands — you don’t need a PayPal account, you can pay by debit or credit card. ' : '')
@@ -783,7 +785,7 @@ function drawPayStatus() {
   const month = monthKey();
   const paid = list.find(x => x.month === month && isMonthly(x));
   const box = $('#pay-status');
-  box.hidden = !!p.feesExempt || p.role !== 'student';
+  box.hidden = !!p.feesExempt || !!p.directDebit || p.role !== 'student';
   box.className = 'card pay-status ' + (paid ? 'is-paid' : 'is-due');
   box.innerHTML = paid
     ? `<b>✓ ${monthName(month)} fees paid</b><small>${money(paid.amount)} · ${payMethod(paid)} · ${new Date(paid.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</small>`
@@ -869,7 +871,7 @@ function heroSlides() {
     const todo = myHomework().filter(h => !isDone(h)).length;
     if (todo) slides.push({ title: 'Homework', text: `You have ${todo} thing${todo === 1 ? '' : 's'} to practise`, art: '<span class="hero-kanji">宿</span>', go: 'homework' });
     const paid = (state.payments || []).some(x => x.month === monthKey() && isMonthly(x));
-    if (!p.feesExempt && !paid) slides.push({ title: 'Fees', text: `${monthName(monthKey())} fees aren’t paid yet`, art: '<span class="hero-kanji">£</span>', go: 'pay' });
+    if (!p.feesExempt && !p.directDebit && !paid) slides.push({ title: 'Fees', text: `${monthName(monthKey())} fees aren’t paid yet`, art: '<span class="hero-kanji">£</span>', go: 'pay' });
   }
   return slides;
 }
