@@ -7,7 +7,7 @@ import {
   $, $$, esc, TYPES, GRADES, AUDIENCES, CLASS_CHATS, CLASS_JOURNALS, classesFor, classChatName, renderYear, legendHTML, upcoming, loadCalendar, messageHTML, wireEdits, editing, licenceHTML, MEDALS, medalHTML, threadId, senseiList,
   calendarYears, isRelevant, noticeIsFor, homeworkIsFor, myAudiences, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
   toast, busy, registerSW, DEFAULT_FEES, FEE_GROUPS, feeLevel, money, paypalLink, agreedFee,
-  monthKey, monthName, isMonthly, payMethod, keyOf,
+  monthKey, monthName, countsAsPaid, paysPerLesson, payMethod, keyOf,
 } from './common.js';
 
 const VIEWS = ['home', 'calendar', 'menu', 'homework', 'syllabus', 'videos', 'pay', 'licence', 'medals', 'attendance', 'profile'];
@@ -253,10 +253,11 @@ function onProfile(p) {
   fillProfile($('#form-profile'), state.profile);
   drawBlocked();
   if (state.member && state.view === 'menu') drawMenu();
-  if (state.view === 'pay' && (!!p.feesExempt !== !!state.wasExempt || !!p.directDebit !== !!state.wasDD || p.monthlyFee !== state.wasFee || p.grade !== oldBelt)) drawPay();
+  if (state.view === 'pay' && (!!p.feesExempt !== !!state.wasExempt || !!p.directDebit !== !!state.wasDD || p.payPlan !== state.wasPlan || p.monthlyFee !== state.wasFee || p.grade !== oldBelt)) drawPay();
   state.wasFee = p.monthlyFee;
   state.wasExempt = !!p.feesExempt;
   state.wasDD = !!p.directDebit;
+  state.wasPlan = p.payPlan;
   if (p.grade && oldBelt && p.grade !== oldBelt) {
     toast('Sensei has updated your belt to ' + (GRADES[p.grade] || p.grade) + (p.grade === 'dan' ? ' — congratulations!' : '.'));
     drawHome(); drawCalendar(); drawHomework(); drawMenu();
@@ -783,13 +784,13 @@ function drawPayStatus() {
   const p = state.profile;
   const list = state.payments || [];
   const month = monthKey();
-  const paid = list.find(x => x.month === month && isMonthly(x));
+  const paid = list.find(x => x.month === month && countsAsPaid(x, p));
   const box = $('#pay-status');
   box.hidden = !!p.feesExempt || !!p.directDebit || p.role !== 'student';
   box.className = 'card pay-status ' + (paid ? 'is-paid' : 'is-due');
   box.innerHTML = paid
     ? `<b>✓ ${monthName(month)} fees paid</b><small>${money(paid.amount)} · ${payMethod(paid)} · ${new Date(paid.at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</small>`
-    : `<b>${monthName(month)} fees not paid yet</b><small>Pay your monthly fee below, or pay Sensei at the dojo.</small>`;
+    : `<b>${monthName(month)} fees not paid yet</b><small>${paysPerLesson(p) ? 'Pay for your lesson below' : 'Pay your monthly fee below'}, or pay Sensei at the dojo.</small>`;
   $('#pay-history-wrap').hidden = !list.length;
   $('#pay-history').innerHTML = list.slice(0, 24).map(x => `<li><span><b>${esc(x.feeName || 'Payment')}</b><small>${monthName(x.month)} · ${payMethod(x)}</small></span><b>${money(x.amount)}</b></li>`).join('');
 }
@@ -870,7 +871,7 @@ function heroSlides() {
     if (unreadNotice) slides.push({ title: 'New from Sensei', text: esc(unreadNotice.title), art: '<span class="hero-kanji">知</span>', go: 'menu' });
     const todo = myHomework().filter(h => !isDone(h)).length;
     if (todo) slides.push({ title: 'Homework', text: `You have ${todo} thing${todo === 1 ? '' : 's'} to practise`, art: '<span class="hero-kanji">宿</span>', go: 'homework' });
-    const paid = (state.payments || []).some(x => x.month === monthKey() && isMonthly(x));
+    const paid = (state.payments || []).some(x => x.month === monthKey() && countsAsPaid(x, p));
     if (!p.feesExempt && !p.directDebit && !paid) slides.push({ title: 'Fees', text: `${monthName(monthKey())} fees aren’t paid yet`, art: '<span class="hero-kanji">£</span>', go: 'pay' });
   }
   return slides;
