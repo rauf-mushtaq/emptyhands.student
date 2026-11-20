@@ -206,10 +206,19 @@
   <section class="view" id="view-syllabus" hidden>
     <div class="view-head">
       <div><p class="eyebrow">10th Kyu to Shodan</p><h1>Syllabus</h1></div>
-      <div class="view-actions"><button class="btn btn--ghost btn--sm" type="button" data-go="videos">Karate videos</button><a class="btn btn--ghost btn--sm" id="syl-pdf" href="assets/docs/EmptyHands-Syllabus.pdf" target="_blank" rel="noopener">Open PDF</a></div>
+      <div class="view-actions"><a class="btn btn--ghost btn--sm" id="syl-pdf" hidden href="assets/docs/EmptyHands-Syllabus.pdf" target="_blank" rel="noopener">Open PDF</a></div>
     </div>
-    <p class="muted fine">The EmptyHands syllabus summary sheet. Pinch or zoom to read the details.</p>
-    <div class="syllabus">
+    <div class="chips syl-tabs" role="tablist" aria-label="Karate syllabus">
+      <button type="button" class="chip" role="tab" data-syl="dates" aria-selected="true">Dates</button>
+      <button type="button" class="chip" role="tab" data-syl="kumite" aria-selected="false">Kumite</button>
+      <button type="button" class="chip" role="tab" data-syl="kihon" aria-selected="false">Kihon</button>
+      <button type="button" class="chip" role="tab" data-syl="sheet" aria-selected="false">Syllabus sheet</button>
+    </div>
+    <div id="syl-dates"></div>
+    <div id="syl-kumite" hidden></div>
+    <div id="syl-kihon" hidden></div>
+    <p class="muted fine" id="syl-sheet-note" hidden>The EmptyHands syllabus summary sheet. Pinch or zoom to read the details.</p>
+    <div class="syllabus" id="syl-sheet" hidden>
       <img src="assets/syllabus/page-1.webp" alt="Syllabus page 1: introduction" width="1323" height="1872" loading="lazy">
       <img src="assets/syllabus/page-2.webp" alt="Syllabus page 2: Kihon, Kata, Kumite and theory" width="1323" height="1872" loading="lazy">
       <img src="assets/syllabus/page-3.webp" alt="Syllabus page 3" width="1323" height="1872" loading="lazy">

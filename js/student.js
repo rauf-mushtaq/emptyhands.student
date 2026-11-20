@@ -71,6 +71,7 @@ function show(id) {
   if (id === 'medals') drawMedals();
   if (id === 'attendance') drawAttendance();
   if (id === 'calendar') drawCalendar(true);
+  if (id === 'syllabus') drawSyllabus();
 }
 document.addEventListener('click', e => {
   const go = e.target.closest('[data-go]');
@@ -975,6 +976,30 @@ async function drawCalendar(scroll) {
     if (m) requestAnimationFrame(() => m.scrollIntoView({ block: 'start' }));
   }
 }
+
+// Karate syllabus page: Dates (gradings and black belt classes still to come), Kumite and Kihon videos,
+// and the syllabus sheet.
+function drawSyllabus() {
+  const today = todayKey();
+  const days = (state.cal && state.cal.days) || state.homeDays || {};
+  const li = ([k, v]) => `<li><time>${shortDate(k)}</time><span>${esc(v.note || '')}</span><small>${whenText(k)}</small></li>`;
+  const groups = [['grading', 'Gradings & workshops'], ['blackbelt', 'Black belt classes']];
+  $('#syl-dates').innerHTML = groups.map(([t, title]) => {
+    const list = Object.entries(days).filter(([k, v]) => v.type === t && k >= today).sort(([a], [b]) => a.localeCompare(b));
+    return `<section class="card keydates-group"><h2><span class="swatch t-${t}"></span>${title} <small>${list.length}</small></h2>
+      ${list.length ? `<ul>${list.map(li).join('')}</ul>` : '<p class="muted fine">No more dates yet.</p>'}</section>`;
+  }).join('') + '<p class="muted fine">All dojo dates are in the <button type="button" class="linkish" data-go="calendar">calendar</button>.</p>';
+  const vids = title => { const g = VIDEO_GROUPS.find(x => x.title === title); return g ? `<div class="kata-grid">${g.videos.map(k => kataCard(k, g.by)).join('')}</div>` : ''; };
+  $('#syl-kumite').innerHTML = vids('Kumite');
+  $('#syl-kihon').innerHTML = vids('Kihon');
+}
+$('.syl-tabs').addEventListener('click', e => {
+  const b = e.target.closest('[data-syl]');
+  if (!b) return;
+  $$('.syl-tabs [data-syl]').forEach(x => x.setAttribute('aria-selected', x === b));
+  for (const t of ['dates', 'kumite', 'kihon']) $('#syl-' + t).hidden = b.dataset.syl !== t;
+  $('#syl-sheet').hidden = $('#syl-sheet-note').hidden = $('#syl-pdf').hidden = b.dataset.syl !== 'sheet';
+});
 
 // The year's days off and key dates as lists, below the month grid.
 function drawKeyDates(days) {
