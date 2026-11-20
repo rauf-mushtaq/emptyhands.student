@@ -839,12 +839,13 @@ $('#explore').innerHTML = EXPLORE.map(x => {
     : `<a class="explore-card" href="${esc(x.href)}" target="_blank" rel="noopener">${inner}</a>`;
 }).join('');
 
-// Karate videos: the first group (red to black belt kata) as a row on Home for Karate students,
+// Karate videos: one group (the red to black belt kata) as a row on Home for Karate students,
 // and every group on the Karate videos page.
 const kataCard = (k, by) => `<a class="kata-card" href="${esc(videoUrl(k))}" target="_blank" rel="noopener" aria-label="${esc(k.name)}${by ? ', ' + esc(by) : ''}: watch on YouTube">
     <span class="kata-tile" aria-hidden="true"><span class="kata-jp${k.jp.length > 4 ? ' kata-jp--long' : ''}" lang="ja">${esc(k.jp)}</span><span class="kata-play"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z"/></svg></span></span>
     <b>${esc(k.name)}</b><small>Watch on YouTube</small></a>`;
-$('#kata-row').innerHTML = VIDEO_GROUPS[0].videos.map(k => kataCard(k, VIDEO_GROUPS[0].by)).join('');
+const homeVideos = VIDEO_GROUPS.find(g => g.home);
+$('#kata-row').innerHTML = homeVideos.videos.map(k => kataCard(k, homeVideos.by)).join('');
 $('#kata-groups').innerHTML = VIDEO_GROUPS.map(g => `<section class="kata-group"><h2>${esc(g.title)}</h2>${g.by ? `<p class="muted fine">${esc(g.by)}</p>` : ''}
   <div class="kata-grid">${g.videos.map(k => kataCard(k, g.by)).join('')}</div></section>`).join('');
 

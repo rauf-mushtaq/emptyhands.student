@@ -1,12 +1,21 @@
-// Karate videos for students: the syllabus kata, performed by Hirokazu Kanazawa Sensei (Shotokan,
-// SKIF), and kumite. Shown on the Karate videos page, with the first group as a row on Home. Each one
-// opens on YouTube (the phone's YouTube app or browser), so nothing from YouTube loads inside the app.
-// id: the YouTube video id; t: start this many seconds in; jp: the name in Japanese, for the card.
+// Karate videos for students: kihon, the syllabus kata performed by Hirokazu Kanazawa Sensei
+// (Shotokan, SKIF), and kumite. Shown on the Karate videos page; the group marked home is also a row
+// on Home. Each one opens on YouTube (the phone's YouTube app or browser), so nothing from YouTube
+// loads inside the app. id: the YouTube video id; t: start this many seconds in; jp: the name in
+// Japanese, for the card.
 const KANAZAWA = 'Hirokazu Kanazawa Sensei, Shotokan (SKIF)';
 export const VIDEO_GROUPS = [
   {
+    title: 'Kihon',
+    by: 'Hirokazu Kanazawa Soke',
+    videos: [
+      { name: 'Kihon Master Class', jp: '基本', id: 'iIszWiOD9_s' },
+    ],
+  },
+  {
     title: 'Essential Syllabus Kata from Red to Black Belt',
     by: KANAZAWA,
+    home: true,
     videos: [
       { name: 'Heian Shodan', jp: '平安初段', id: 'lZyI9mtk924' },
       { name: 'Heian Nidan', jp: '平安二段', id: '_ZPODff5Vew' },
