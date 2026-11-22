@@ -145,6 +145,7 @@ async function firebaseBackend() {
       return () => stops.forEach(stop => stop());
     },
     addHomework: h => F.addDoc(F.collection(db, 'homework'), { ...h, createdAt: F.serverTimestamp() }),
+    updateHomework: (id, h) => F.updateDoc(ref('homework', id), { ...h, editedAt: F.serverTimestamp() }),
     deleteHomework: id => F.deleteDoc(ref('homework', id)),
     setHomeworkDone: (uid, id, done) => F.updateDoc(ref('users', uid), new F.FieldPath('homeworkDone', id), done ? Date.now() : F.deleteField()),
 
@@ -329,6 +330,7 @@ function demoBackend() {
 
     watchHomework: cb => watch('homework', () => load('homework', []).sort((a, b) => b.createdAt - a.createdAt), cb),
     addHomework: async h => { const now = Date.now(); save('homework', [...load('homework', []), { ...h, id: 'h' + now.toString(36), createdAt: now }]); },
+    updateHomework: async (id, h) => save('homework', load('homework', []).map(x => (x.id === id ? { ...x, ...h, editedAt: Date.now() } : x))),
     deleteHomework: async id => save('homework', load('homework', []).filter(h => h.id !== id)),
     setHomeworkDone: async (uid, id, done) => {
       const u = users.all()[uid] || {}; const d = { ...(u.homeworkDone || {}) };
