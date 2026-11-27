@@ -7,10 +7,10 @@ import {
   $, $$, esc, TYPES, GRADES, AUDIENCES, CLASS_CHATS, CLASS_JOURNALS, classesFor, classChatName, renderYear, legendHTML, upcoming, loadCalendar, messageHTML, wireEdits, editing, licenceHTML, MEDALS, medalHTML, threadId, senseiList,
   calendarYears, isRelevant, noticeIsFor, homeworkIsFor, myAudiences, longDate, shortDate, whenText, timeAgo, todayKey, icsFor, download,
   toast, busy, registerSW, DEFAULT_FEES, FEE_GROUPS, feeLevel, money, paypalLink, agreedFee,
-  monthKey, monthName, countsAsPaid, paysPerLesson, payMethod, keyOf,
+  monthKey, monthName, countsAsPaid, paysPerLesson, payMethod, keyOf, LICENCE_BELTS, dateOf,
 } from './common.js';
 
-const VIEWS = ['home', 'calendar', 'menu', 'homework', 'syllabus', 'videos', 'pay', 'licence', 'medals', 'attendance', 'profile'];
+const VIEWS = ['home', 'calendar', 'menu', 'homework', 'syllabus', 'videos', 'pay', 'licence', 'results', 'medals', 'attendance', 'profile'];
 const state = {
   user: null, profile: null, notices: [], thread: [], chat: null, cal: null,
   group: [], journal: [], homework: [], awards: [], channel: 'notices',
@@ -69,6 +69,7 @@ function show(id) {
   if (id === 'pay') drawPay();
   if (id === 'licence') drawLicence();
   if (id === 'medals') drawMedals();
+  if (id === 'results') drawResults();
   if (id === 'attendance') drawAttendance();
   if (id === 'calendar') drawCalendar(true);
   if (id === 'syllabus') drawSyllabus();
@@ -232,6 +233,7 @@ async function enter(user) {
   state.stops.push(api.watchMyPayments(user.uid, list => { state.payments = list; if (state.view === 'pay') drawPayStatus(); }));
   state.stops.push(api.watchLicence(user.uid, l => { state.licence = l; if (state.view === 'licence') drawLicence(); }));
   state.stops.push(api.watchMyAwards(user.uid, list => onList('awards', list)));
+  state.stops.push(api.watchMyResults(user.uid, list => onList('results', list)));
   state.stops.push(api.watchMyAttendance(user.uid, list => { state.attended = list; if (state.view === 'attendance') drawAttendance(); if (state.view === 'calendar') drawCalendar(); }));
   if (p.role === 'student') startMember();
   const start = location.hash.slice(1);
@@ -385,12 +387,14 @@ function onList(kind, list) {
     drawPicker();
   }
   else if (kind === 'homework') myHomework().forEach(h => fresh(h) ? announce(h.id, 'New homework: ' + h.title, h.details || '') : state.seen.add(h.id));
+  else if (kind === 'results') list.forEach(r => fresh(r) ? announce(r.id, 'Your grading results are in', `${GRADES[r.belt] || 'Grading'}: ${RESULT_NAMES[r.result] || 'see your marks'}`) : state.seen.add(r.id));
   else if (kind === 'awards') list.forEach(a => fresh(a) ? announce(a.id, `${(MEDALS[a.medal] || MEDALS.star).icon} You’ve earned a medal: ${a.title}`, a.note || '') : state.seen.add(a.id));
   refresh();
 }
 
 function refresh() {
   drawMedals();
+  drawResults();
   if (state.view === 'menu' && !document.hidden) markRead();
   drawMenu();
   drawHome();
@@ -859,6 +863,8 @@ function heroSlides() {
   const hour = new Date().getHours();
   const first = esc((p.name || '').split(' ')[0]);
   const slides = [{ title: `${hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'}, ${first}`, text: longDate(todayKey()), art: '<img src="assets/img/logo.png" alt="">', go: 'profile' }];
+  const res = (state.results || []).find(r => Date.now() - (r.sharedAt || 0) < 30 * 864e5);
+  if (res) slides.unshift({ title: 'Grading results', text: `${esc(GRADES[res.belt] || 'Your grading')}${res.result ? ': ' + esc(RESULT_NAMES[res.result] || '') : ''}`, art: '<span class="hero-kanji">段</span>', go: 'results' });
   const award = (state.awards || [])[0];
   if (award && Date.now() - award.createdAt < 30 * 864e5) {
     slides.unshift({ title: 'Nice work!', text: `You’ve earned a medal: ${esc(award.title)}`, art: `<span class="hero-emoji">${(MEDALS[award.medal] || MEDALS.star).icon}</span>`, go: 'medals' });
@@ -1214,6 +1220,43 @@ $('#lic-print').addEventListener('click', async () => {
   if (!NATIVE) return print();
   try { await printPage('EmptyHands licence'); } catch (err) { console.warn(err); toast('Couldn’t open the print screen. Please try again.', 'bad'); }
 });
+
+// ---- My gradings: results Sensei shares after a grading (only the student's own) ----
+const RESULT_NAMES = { CP: 'Conditional pass', P: 'Pass', M: 'Merit', D: 'Distinction', F: 'Not yet' };
+const RESULT_AREAS = [['kihon', 'Kihon'], ['kicks', 'Kicks'], ['kata', 'Kata'], ['kumite', 'Kumite'], ['supp', 'Supplementary']];
+function resultHTML(r) {
+  const belt = LICENCE_BELTS.find(b => b.grade === r.belt);
+  const min = typeof r.min === 'number' ? r.min : null;
+  const marks = RESULT_AREAS.filter(([k]) => typeof (r.marks || {})[k] === 'number');
+  const when = r.date ? dateOf(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+  return `<article class="card res-card">
+    <header class="res-head">
+      <span class="res-belt" style="--belt:${belt ? belt.bg : 'var(--paper-3)'}" aria-hidden="true"></span>
+      <div class="res-title"><p class="eyebrow">${r.type === 'mock' ? 'Mock grading' : 'Grading'}${when ? ' · ' + esc(when) : ''}</p>
+        <h2>${esc(GRADES[r.belt] || r.title || 'Grading')}</h2>${belt ? `<small>${esc(belt.rank)}</small>` : ''}</div>
+      ${r.result ? `<span class="res-badge r-${esc(r.result)}">${esc(RESULT_NAMES[r.result] || r.result)}</span>` : ''}
+    </header>
+    <div class="res-body">
+      ${marks.map(([k, label]) => {
+        const v = r.marks[k];
+        return `<div class="res-mark"><span>${label}</span>
+          <span class="res-bar" role="img" aria-label="${label}: ${v} out of 4"><i class="${min !== null && v < min ? 'is-low' : ''}" style="width:${v / 4 * 100}%"></i>${min !== null ? `<b class="res-min" style="left:${min / 4 * 100}%"></b>` : ''}</span>
+          <strong>${v}<small>/4</small></strong></div>`;
+      }).join('')}
+      ${marks.length ? `<p class="res-avg"><span>Average <b>${Math.round((r.average || 0) * 10) / 10}</b> out of 4</span>${min !== null ? `<span class="res-key"><b class="res-min-key"></b> Minimum for this grade: ${min}</span>` : ''}</p>` : ''}
+      ${r.comments ? `<blockquote class="res-comment">${esc(r.comments)}<cite>Sensei</cite></blockquote>` : ''}
+    </div>
+  </article>`;
+}
+function drawResults() {
+  const list = state.results || [];
+  const box = $('#results-list');
+  if (!box) return;
+  $('#results-count').hidden = !list.length;
+  $('#results-count').textContent = list.length;
+  box.innerHTML = list.length ? list.map(resultHTML).join('')
+    : '<div class="empty"><span aria-hidden="true">段</span><p>No grading results yet. After your grading, Sensei will share your marks and comments here.</p></div>';
+}
 
 // ---- My medals: awarded by Sensei ----
 function drawMedals() {

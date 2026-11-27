@@ -193,6 +193,24 @@ async function firebaseBackend() {
       await batch.commit();
     },
     deleteAward: id => F.deleteDoc(ref('awards', id)),
+    // Grading results Sensei shares with students (results/{gradingId}_{uid}): each student reads only
+    // their own marks, result and comments.
+    watchMyResults: (uid, cb) => F.onSnapshot(F.query(F.collection(db, 'results'), F.where('uid', '==', uid)),
+      snap => cb(rows(snap).map(r => ({ ...r, sharedAt: millis(r.sharedAt) })).sort((a, b) => (b.date || '').localeCompare(a.date || ''))), err => console.error(err)),
+    shareResults: async (gradingId, list) => {
+      const old = await F.getDocs(F.query(F.collection(db, 'results'), F.where('gradingId', '==', gradingId)));
+      const keep = new Set(list.map(r => gradingId + '_' + r.uid));
+      const batch = F.writeBatch(db);
+      old.docs.forEach(d => { if (!keep.has(d.id)) batch.delete(d.ref); });
+      list.forEach(r => batch.set(ref('results', gradingId + '_' + r.uid), { ...r, gradingId, sharedAt: F.serverTimestamp() }));
+      await batch.commit();
+    },
+    unshareResults: async gradingId => {
+      const old = await F.getDocs(F.query(F.collection(db, 'results'), F.where('gradingId', '==', gradingId)));
+      const batch = F.writeBatch(db);
+      old.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    },
     // Grading record sheets (gradings/{id}): Sensei only. One sheet per grading, with a row per student.
     watchGradings: cb => F.onSnapshot(F.query(F.collection(db, 'gradings'), F.orderBy('date', 'desc'), F.limit(200)),
       snap => cb(rows(snap).map(g => ({ ...g, updatedAt: millis(g.updatedAt) }))), err => console.error(err)),
@@ -371,6 +389,13 @@ function demoBackend() {
     watchAwards: cb => watch('awards', () => load('awards', []).sort((a, b) => b.createdAt - a.createdAt), cb),
     giveAwards: async list => { const now = Date.now(); save('awards', [...load('awards', []), ...list.map((a, i) => ({ ...a, id: 'a' + now.toString(36) + i, createdAt: now }))]); },
     deleteAward: async id => save('awards', load('awards', []).filter(a => a.id !== id)),
+    watchMyResults: (uid, cb) => watch('results', () => Object.values(load('results', {})).filter(r => r.uid === uid).sort((a, b) => (b.date || '').localeCompare(a.date || '')), cb),
+    shareResults: async (gradingId, list) => {
+      const t = Object.fromEntries(Object.entries(load('results', {})).filter(([, r]) => r.gradingId !== gradingId));
+      list.forEach(r => { t[gradingId + '_' + r.uid] = { ...r, id: gradingId + '_' + r.uid, gradingId, sharedAt: Date.now() }; });
+      save('results', t);
+    },
+    unshareResults: async gradingId => save('results', Object.fromEntries(Object.entries(load('results', {})).filter(([, r]) => r.gradingId !== gradingId))),
     watchGradings: cb => watch('gradings', () => Object.entries(load('gradings', {})).map(([id, g]) => ({ id, ...g })).sort((a, b) => (b.date || '').localeCompare(a.date || '')), cb),
     saveGrading: async (id, g) => { const t = load('gradings', {}); const key = id || 'g' + Date.now().toString(36); t[key] = { ...g, updatedAt: Date.now() }; save('gradings', t); return key; },
     deleteGrading: async id => { const t = load('gradings', {}); delete t[id]; save('gradings', t); },

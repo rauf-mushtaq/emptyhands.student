@@ -83,6 +83,7 @@
     <div class="sheet-body">
       <div class="quick-row">
         <button type="button" class="quick-card quick-pay" data-go="pay"><span class="quick-icon">£</span><b>Pay<br>fees</b></button>
+        <button type="button" class="quick-card" data-go="results"><span class="quick-icon">段<span class="count-pill" id="results-count" hidden></span></span><b>My<br>gradings</b></button>
         <button type="button" class="quick-card" data-go="medals"><span class="quick-icon">🏅<span class="count-pill" id="medal-count" hidden></span></span><b>My<br>medals</b></button>
         <button type="button" class="quick-card" data-go="attendance"><span class="quick-icon">✓</span><b>My<br>attendance</b></button>
         <button type="button" class="quick-card" data-go="licence"><span class="quick-icon">帯</span><b>My<br>licence</b></button>
@@ -115,7 +116,7 @@
     <nav class="side-links">
       <button data-go="home">Home</button><button data-go="calendar">Calendar</button><button data-go="menu">EmptyHands chats</button>
       <button data-go="homework">Homework</button><button data-go="syllabus">Syllabus</button><button data-go="videos">Karate videos</button><button data-go="pay">Pay fees</button>
-      <button data-go="attendance">My attendance</button><button data-go="medals">My medals</button><button data-go="licence">My licence</button><button data-go="profile">Profile &amp; notifications</button>
+      <button data-go="attendance">My attendance</button><button data-go="results">My gradings</button><button data-go="medals">My medals</button><button data-go="licence">My licence</button><button data-go="profile">Profile &amp; notifications</button>
       <a href="https://emptyhands.co.uk/" target="_blank" rel="noopener">EmptyHands website</a>
     </nav>
     <button type="button" class="btn btn--ghost btn--block" data-signout>Sign out</button>
@@ -259,6 +260,13 @@
   <section class="view" id="view-medals" hidden>
     <div class="view-head"><div><p class="eyebrow">Well done!</p><h1>My medals</h1></div></div>
     <div class="medal-list" id="my-medals"></div>
+  </section>
+
+  <!-- My gradings: results Sensei shares after each grading (only the student's own) -->
+  <section class="view" id="view-results" hidden>
+    <div class="view-head"><div><p class="eyebrow">Your record</p><h1>My gradings</h1></div></div>
+    <p class="muted fine">Your marks out of 4 from each grading, your result and Sensei’s comments. Only you can see these.</p>
+    <div class="results" id="results-list"></div>
   </section>
 
   <!-- My licence: details and belt record, filled in by Sensei -->
