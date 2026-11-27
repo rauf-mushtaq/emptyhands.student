@@ -801,12 +801,12 @@ body.in-chat .chat-compose { flex: none; position: static; }
 .pp-who span { display: block; }
 .pp-keyline { margin-top: 2mm; color: var(--ink-3); line-height: 1.35; }
 .pp-comh { background: #fff !important; }
-.pp-table tbody tr { height: 7.4mm; }
+.pp-table tbody tr { height: var(--rowh, 7.4mm); }
 .pp-table tbody tr:nth-child(even) td:not(.pp-name) { background: #fcfaf5; }
 .pp-n { text-align: center; font-size: 6.5pt; font-weight: 700; color: var(--ink-3); }
 .pp-name { padding: 0 2mm 0 2.8mm !important; line-height: 1.12; overflow: hidden; background: linear-gradient(90deg, var(--belt) 1.4mm, #fff 1.4mm) !important; }
-.pp-name b { display: block; font-size: 8.5pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pp-name small { display: block; font-size: 5.8pt; color: var(--ink-3); }
+.pp-name b { display: block; font-size: 8.2pt; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-name small { display: block; font-size: 5.6pt; line-height: 1.1; color: var(--ink-3); }
 .pp-foot { display: flex; gap: 6mm; margin-top: 2.5mm; font-size: 6.6pt; line-height: 1.3; break-inside: avoid; }
 .pp-foot h2 { margin: 0 0 1mm; font-family: var(--serif); font-size: 9pt; font-weight: 600; }
 .pp-foot p { margin: 0 0 .5mm; }
@@ -818,6 +818,14 @@ body.in-chat .chat-compose { flex: none; position: static; }
 .pp-lines p { margin: 0; white-space: pre-wrap; line-height: 1.35; }
 .pp-lines i { display: block; height: 5.5mm; border-bottom: .2mm solid #ddd4c3; }
 .pp-lines i:last-child { border-bottom: 0; }
+/* The short key under the sheet: result codes and minimums, then one line for overall comments */
+.pp-key { margin-top: 1.8mm; font-size: 6.6pt; line-height: 1.35; color: var(--ink-2); break-inside: avoid; }
+.pp-key p { margin: 0 0 1mm; }
+.pp-key b { color: var(--ink); }
+.pp-k { display: inline-block; min-width: 4.2mm; padding: 0 .8mm; border-radius: 1mm; font-weight: 800; text-align: center; }
+.pp-ov { display: flex; gap: 2mm; align-items: flex-end; }
+.pp-ov span { flex: 1; min-height: 4.6mm; border-bottom: .25mm solid #b9ad97; white-space: pre-wrap; color: var(--ink); }
+.pr-low { color: var(--seal); font-weight: 700; }
 /* One printed page each; the PDF maker draws each page off-screen at A4 landscape size. */
 .pp-page + .pp-page { break-before: page; }
 .pp-render { position: fixed; left: -20000px; top: 0; }
@@ -825,6 +833,8 @@ body.in-chat .chat-compose { flex: none; position: static; }
 /* html2canvas draws clipped text and pill badges a little off, so the PDF uses plainer versions. */
 .pp-render .pp-name, .pp-render .pp-name b { overflow: visible; white-space: normal; text-overflow: clip; }
 .pp-render .pp-chip { min-width: 0; padding: 0; background: none !important; font-size: 7pt; }
+.pp-render .pp-k { min-width: 0; padding: 0; background: none !important; }
+.pp-render .pp-name b, .pp-render .pp-name small { position: relative; top: -.7mm; }
 
 /* The results printout */
 .pr-table tbody tr { height: auto; }
