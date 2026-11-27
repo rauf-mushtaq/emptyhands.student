@@ -259,7 +259,7 @@ function onProfile(p) {
   state.wasDD = !!p.directDebit;
   state.wasPlan = p.payPlan;
   if (p.grade && oldBelt && p.grade !== oldBelt) {
-    toast('Sensei has updated your belt to ' + (GRADES[p.grade] || p.grade) + (p.grade === 'dan' ? ' — congratulations!' : '.'));
+    toast('Sensei has updated your belt to ' + (GRADES[p.grade] || p.grade) + (p.grade === 'dan' || p.grade === 'nidan' ? ' — congratulations!' : '.'));
     drawHome(); drawCalendar(); drawHomework(); drawMenu();
   }
   if (was !== 'student' && p.role === 'student') {

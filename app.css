@@ -713,6 +713,10 @@ body.in-chat .chat-compose { flex: none; position: static; }
 .syl-t.b-purple { color: #7b2fa3; } .syl-dot.b-purple { background: #8e3fb8; }
 .syl-t.b-brown { color: #7b4a1e; } .syl-dot.b-brown { background: #8d5524; }
 .syl-t.b-black { color: #111; } .syl-dot.b-black { background: #111; }
+.syl-t.b-nidan { color: #111; text-decoration: underline 2px #c9a227; text-underline-offset: 4px; font-weight: 600; } .syl-dot.b-nidan { background: #111; box-shadow: 0 0 0 2px #c9a227; }
+.syl-combos { margin-top: 14px; }
+.syl-combos summary { cursor: pointer; font-weight: 700; }
+.syl-table td:first-child { white-space: nowrap; }
 .syl-t.b-all { color: var(--ink-2); font-weight: 500; } .syl-dot.b-all { background: linear-gradient(90deg, #d32f2f, #f57c00, #f5d000, #2e9e4a, #8e3fb8, #8d5524, #111); }
 @media (max-width: 560px) {
   .syl-areas { grid-template-columns: 1fr; gap: 4px; }

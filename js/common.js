@@ -20,7 +20,7 @@ export const classChatsFor = p => classesFor(p).map(d => 'group-' + d);
 // The class a group chat or journal belongs to ('group-yoga' → 'Yoga').
 export const classChatName = id => DISCIPLINES[String(id).split('-')[1]] || 'Group';
 export const DOJOS = { ilford: 'Ilford', epping: 'Epping (invite only)', both: 'Both dojos' };
-// Karate belts, lowest first. 'dan' (black belt) is what black-belt dates and notices check for.
+// Karate belts, lowest first. 'dan' (Shodan) and 'nidan' are black belts: see isBlackBelt().
 export const GRADES = {
   none: 'No belt',
   red: 'Red belt',
@@ -33,7 +33,10 @@ export const GRADES = {
   brown1: 'Brown 1 stripe belt',
   brown2: 'Brown 2 stripe belt',
   dan: 'Black belt',
+  nidan: 'Black belt, Nidan',
 };
+// Black belts (Shodan and Nidan) get black-belt classes, notices and calendar dates.
+export const isBlackBelt = grade => grade === 'dan' || grade === 'nidan';
 // Private chats: chats/{studentUid} is shared with every Sensei; chats/{studentUid}~{key} is with one
 // Sensei, where key is their email with anything but a-z and 0-9 turned into _ (as in the rules).
 export const senseiKey = email => String(email || '').toLowerCase().replace(/[^a-z0-9]/g, '_');
@@ -80,6 +83,7 @@ export const LICENCE_BELTS = [
   { grade: 'brown1', belt: 'Brown with stripe', rank: '2nd Kyu', level: 'Advance', bg: '#7a5200', fg: '#ffffff' },
   { grade: 'brown2', belt: 'Brown with two stripes', rank: '1st Kyu', level: 'Advance', bg: '#7a5200', fg: '#ffffff' },
   { grade: 'dan', belt: '1st Degree Black', rank: '1st Dan', level: 'Professional', bg: '#000000', fg: '#ffffff' },
+  { grade: 'nidan', belt: '2nd Degree Black', rank: '2nd Dan', level: 'Professional', bg: '#000000', fg: '#ffffff' },
 ];
 export const LICENCE_RESULTS = ['', 'Pass', 'Merit', 'Distinction'];
 export const OATH = '“I promise to uphold the true spirit of KaraTe and never to use the skills that I am taught against any person(s), except for the defence of myself, family, or friends in the instance of extreme danger or unprovoked attack, or in the support of law and order. Safety will be always my first priority, both for myself and fellow KaraTe-ka. I will endeavour to learn & follow the guidelines of the Dojo Kun & Niju Kun.”';
@@ -218,7 +222,7 @@ export const FEE_LEVELS = { beginner: 'Beginner', intermediate: 'Intermediate', 
 export function feeLevel(grade) {
   if (['yellow', 'green'].includes(grade)) return 'intermediate';
   if (['purple', 'purple1'].includes(grade)) return 'advanced';
-  if (['brown', 'brown1', 'brown2', 'dan'].includes(grade)) return 'application';
+  if (['brown', 'brown1', 'brown2', 'dan', 'nidan'].includes(grade)) return 'application';
   return 'beginner';
 }
 export const money = n => '£' + (Math.round(n * 100) / 100).toFixed(n % 1 ? 2 : 0);
@@ -278,7 +282,7 @@ export function myAudiences(p) {
   const d = p.dojo || '';
   return ['all', ...(p.disciplines || []),
     ...(d === 'ilford' || d === 'both' ? ['ilford'] : []), ...(d === 'epping' || d === 'both' ? ['epping'] : []),
-    ...(p.grade === 'dan' ? ['blackbelt'] : [])];
+    ...(isBlackBelt(p.grade) ? ['blackbelt'] : [])];
 }
 
 // Who a homework item is for: one student, or a group like a notice.
@@ -289,7 +293,7 @@ export function homeworkIsFor(h, uid, p) {
 // Which calendar entries matter to this student.
 export function isRelevant(type, profile) {
   if (!profile) return true;
-  if (type === 'blackbelt') return profile.grade === 'dan';
+  if (type === 'blackbelt') return isBlackBelt(profile.grade);
   if (type === 'grading') return (profile.disciplines || []).includes('karate');
   return true;
 }
@@ -299,7 +303,7 @@ export function noticeIsFor(n, p) {
   if (a === 'all' || !p) return true;
   if (DISCIPLINES[a]) return (p.disciplines || []).includes(a);
   if (a === 'ilford' || a === 'epping') return p.dojo === a || p.dojo === 'both';
-  if (a === 'blackbelt') return p.grade === 'dan';
+  if (a === 'blackbelt') return isBlackBelt(p.grade);
   return true;
 }
 
