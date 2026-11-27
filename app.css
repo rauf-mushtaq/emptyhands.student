@@ -685,6 +685,36 @@ body.in-chat .chat-compose { flex: none; position: static; }
   .gr-table td.gr-del::before { display: none; }
 }
 .gr-print-text { display: none; }
+/* Syllabus by grade: each technique in its belt's colour, as on the grading sheet */
+.gr-syllabus { margin-top: 18px; }
+.gr-syllabus summary { cursor: pointer; font-family: var(--serif); font-size: 1.2rem; font-weight: 600; }
+.gr-syl-title { font-size: 1.05rem; margin: 18px 0 8px; }
+.syl-key { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 14px; }
+.syl-belt { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border: 1px solid var(--paper-3); border-radius: 99px; background: #fff; font: inherit; font-size: .85rem; font-weight: 700; cursor: pointer; color: var(--ink); }
+.syl-belt[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.syl-dot { width: 14px; height: 14px; border-radius: 50%; flex: none; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .15); }
+.syl-areas { display: grid; grid-template-columns: max-content 1fr; gap: 10px 18px; margin: 0; }
+.syl-areas dt { font-weight: 700; padding-top: 2px; }
+.syl-areas dt small { display: block; font-weight: 400; font-size: .75rem; color: var(--ink-3); }
+.syl-areas dd { margin: 0; }
+.syl-areas ul { list-style: none; margin: 0; padding: 0; }
+.syl-areas li { padding: 5px 0; border-top: 1px solid var(--line); line-height: 1.45; }
+.syl-areas li:first-child { border-top: 0; padding-top: 0; }
+.syl-t { font-weight: 700; transition: opacity .15s; }
+.syl-t.is-dim { opacity: .18; }
+.syl-t.b-red { color: #c62828; } .syl-dot.b-red { background: #d32f2f; }
+.syl-t.b-orange { color: #e66a00; } .syl-dot.b-orange { background: #f57c00; }
+.syl-t.b-yellow { color: #b39200; text-shadow: 0 0 1px rgba(120, 95, 0, .35); } .syl-dot.b-yellow { background: #f5d000; }
+.syl-t.b-green { color: #1f8a3b; } .syl-dot.b-green { background: #2e9e4a; }
+.syl-t.b-purple { color: #7b2fa3; } .syl-dot.b-purple { background: #8e3fb8; }
+.syl-t.b-brown { color: #7b4a1e; } .syl-dot.b-brown { background: #8d5524; }
+.syl-t.b-black { color: #111; } .syl-dot.b-black { background: #111; }
+.syl-t.b-all { color: var(--ink-2); font-weight: 500; } .syl-dot.b-all { background: linear-gradient(90deg, #d32f2f, #f57c00, #f5d000, #2e9e4a, #8e3fb8, #8d5524, #111); }
+@media (max-width: 560px) {
+  .syl-areas { grid-template-columns: 1fr; gap: 4px; }
+  .syl-areas dt { margin-top: 10px; }
+}
+@media print { .syl-t { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .syl-key { display: none; } }
 @page grading { size: A4 landscape; margin: 10mm; }
 @media print {
   #gr-edit { page: grading; }
