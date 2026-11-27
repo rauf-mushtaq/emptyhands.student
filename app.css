@@ -636,6 +636,10 @@ body.in-chat .chat-compose { flex: none; position: static; }
 .gr-table td.gr-name { min-width: 160px; }
 .gr-name input { min-width: 140px; }
 .gr-target span { white-space: nowrap; }
+.gr-min { display: block; margin-top: 2px; font-size: .72rem; color: var(--ink-3); }
+.gr-low { display: block; margin-top: 4px; font-size: .72rem; font-weight: 700; color: var(--seal-2); max-width: 120px; line-height: 1.25; }
+.gr-mins { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: -4px 0 10px; color: var(--ink-2); }
+.gr-mins span b { color: var(--ink); }
 .gr-target { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: .75rem; font-weight: 500; color: var(--ink-3); }
 .gr-target select { width: auto; min-height: 30px; padding: 2px 6px; font-size: .8rem; }
 .gr-table input.gr-score { width: 58px; min-width: 58px; min-height: 42px; padding: 6px 2px; text-align: center; font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums; -moz-appearance: textfield; appearance: textfield; }
