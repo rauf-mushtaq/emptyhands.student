@@ -193,6 +193,15 @@ async function firebaseBackend() {
       await batch.commit();
     },
     deleteAward: id => F.deleteDoc(ref('awards', id)),
+    // Grading record sheets (gradings/{id}): Sensei only. One sheet per grading, with a row per student.
+    watchGradings: cb => F.onSnapshot(F.query(F.collection(db, 'gradings'), F.orderBy('date', 'desc'), F.limit(200)),
+      snap => cb(rows(snap).map(g => ({ ...g, updatedAt: millis(g.updatedAt) }))), err => console.error(err)),
+    saveGrading: async (id, g) => {
+      if (id) { await F.setDoc(ref('gradings', id), { ...g, updatedAt: F.serverTimestamp() }); return id; }
+      const d = await F.addDoc(F.collection(db, 'gradings'), { ...g, createdAt: F.serverTimestamp(), updatedAt: F.serverTimestamp() });
+      return d.id;
+    },
+    deleteGrading: id => F.deleteDoc(ref('gradings', id)),
 
     // Student licences (licences/{uid}): Sensei fill them in; each student can read their own.
     getLicence: async uid => { const s = await F.getDoc(ref('licences', uid)); return s.exists() ? s.data() : null; },
@@ -362,6 +371,9 @@ function demoBackend() {
     watchAwards: cb => watch('awards', () => load('awards', []).sort((a, b) => b.createdAt - a.createdAt), cb),
     giveAwards: async list => { const now = Date.now(); save('awards', [...load('awards', []), ...list.map((a, i) => ({ ...a, id: 'a' + now.toString(36) + i, createdAt: now }))]); },
     deleteAward: async id => save('awards', load('awards', []).filter(a => a.id !== id)),
+    watchGradings: cb => watch('gradings', () => Object.entries(load('gradings', {})).map(([id, g]) => ({ id, ...g })).sort((a, b) => (b.date || '').localeCompare(a.date || '')), cb),
+    saveGrading: async (id, g) => { const t = load('gradings', {}); const key = id || 'g' + Date.now().toString(36); t[key] = { ...g, updatedAt: Date.now() }; save('gradings', t); return key; },
+    deleteGrading: async id => { const t = load('gradings', {}); delete t[id]; save('gradings', t); },
     getLicence: async uid => load('lic:' + uid, null),
     saveLicence: async (uid, data) => save('lic:' + uid, { ...data, updatedAt: Date.now() }),
     watchLicence: (uid, cb) => watch('lic:' + uid, () => load('lic:' + uid, null), cb),

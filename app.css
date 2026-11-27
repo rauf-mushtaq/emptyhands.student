@@ -615,6 +615,89 @@ body.in-chat .chat-compose { flex: none; position: static; }
   .lic-record th, .lic-record td { padding: 2px 6px; }
 }
 
+/* Grading record sheets (Sensei panel) */
+.file-btn { position: relative; overflow: hidden; cursor: pointer; }
+.file-btn input { position: absolute; inset: 0; width: 100%; opacity: 0; cursor: pointer; }
+.gr-list { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+.gr-card { display: flex; align-items: center; gap: 16px; width: 100%; padding: 16px; text-align: left; font: inherit; color: inherit; cursor: pointer; border: 1px solid var(--line); }
+.gr-card:hover { border-color: var(--bronze-2); }
+.gr-date { flex: none; width: 66px; padding: 9px 4px 8px; border-radius: 14px; text-align: center; background: var(--ink); color: var(--paper); }
+.gr-date b { display: block; font-family: var(--serif); font-size: 1.8rem; line-height: 1; }
+.gr-date small { font-size: .7rem; letter-spacing: .02em; }
+.gr-card-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.gr-card-main .eyebrow { margin: 0; }
+.gr-card-main b { font-family: var(--serif); font-size: 1.25rem; font-weight: 600; }
+.gr-card-main small { color: var(--ink-3); }
+.gr-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.gr-go { font-size: 1.6rem; color: var(--ink-3); }
+.gr-head { display: grid; gap: 12px 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+.gr-table td { vertical-align: middle; padding: 10px 8px; }
+.gr-table th { padding: 12px 8px; }
+.gr-table td.gr-name { min-width: 160px; }
+.gr-name input { min-width: 140px; }
+.gr-target span { white-space: nowrap; }
+.gr-target { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: .75rem; font-weight: 500; color: var(--ink-3); }
+.gr-target select { width: auto; min-height: 30px; padding: 2px 6px; font-size: .8rem; }
+.gr-table input.gr-score { width: 58px; min-width: 58px; min-height: 42px; padding: 6px 2px; text-align: center; font-weight: 700; font-size: 1.05rem; font-variant-numeric: tabular-nums; -moz-appearance: textfield; appearance: textfield; }
+.gr-score::-webkit-inner-spin-button, .gr-score::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.gr-table input.gr-score.s-hi, .gr-avg .s-hi { background: #e1eedf; color: var(--ok); border-color: #c9dcc5; }
+.gr-table input.gr-score.s-mid, .gr-avg .s-mid { background: #f6eedd; color: #7a5a1c; border-color: #e8dabd; }
+.gr-table input.gr-score.s-lo, .gr-avg .s-lo { background: #f9e2df; color: var(--seal-2); border-color: #efc9c3; }
+.gr-avg span { display: inline-block; min-width: 46px; padding: 6px 8px; border-radius: 99px; text-align: center; font-weight: 800; background: var(--paper-2); font-variant-numeric: tabular-nums; }
+.gr-table select.gr-result { width: auto; min-width: 128px; min-height: 42px; border-radius: 99px; font-weight: 700; }
+.gr-table select.gr-result.r-P { background: #e1eedf; color: var(--ok); }
+.gr-table select.gr-result.r-M { background: #e2ebf5; color: #23507a; }
+.gr-table select.gr-result.r-D { background: #efe4f5; color: #5b2d7a; }
+.gr-table select.gr-result.r-CP { background: #f8ecd9; color: var(--warn); }
+.gr-table select.gr-result.r-F { background: #f9e2df; color: var(--seal-2); }
+.r-P { background: #e1eedf; color: var(--ok); }
+.r-M { background: #e2ebf5; color: #23507a; }
+.r-D { background: #efe4f5; color: #5b2d7a; }
+.r-CP { background: #f8ecd9; color: var(--warn); }
+.r-F { background: #f9e2df; color: var(--seal-2); }
+.gr-comments textarea { min-width: 160px; min-height: 64px; font-size: .9rem; }
+.gr-table .gr-more input { display: block; width: 104px; min-height: 34px; padding: 4px 8px; font-size: .85rem; }
+.gr-del button { font-size: 1.4rem; line-height: 1; text-decoration: none; padding: 4px 6px; }
+.gr-more input + input { margin-top: 6px; }
+.gr-add { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0 20px; }
+.gr-add select { flex: 1 1 240px; width: auto; max-width: 440px; }
+.gr-overall { font-weight: 700; margin-bottom: 14px; }
+.gr-overall textarea { font-weight: 400; }
+.gr-guide { margin-bottom: 14px; }
+.gr-guide summary { cursor: pointer; font-weight: 700; }
+.gr-guide li { padding: 6px 0; border-top: 1px solid var(--line); }
+.gr-guide li:first-child { border-top: 0; }
+.gr-areas { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 10px 0 0; font-size: .9rem; }
+.gr-areas dt { font-weight: 700; }
+.gr-areas dd { margin: 0; color: var(--ink-2); }
+@media (max-width: 700px) {
+  .gr-table td.gr-name { display: block; min-width: 0; }
+  .gr-table td.gr-name::before { display: none; }
+  .gr-table td { align-items: center; }
+  .gr-comments textarea, .gr-name input { min-width: 0; width: 100%; }
+  .gr-table .gr-more input { display: inline-block; width: calc(50% - 4px); }
+  .gr-more input + input { margin: 0 0 0 4px; }
+  /* the five marks side by side, each with its label above */
+  .gr-table td.gr-s { display: inline-flex; flex-direction: column; align-items: center; gap: 3px; width: 20%; padding: 6px 0; }
+  .gr-table td.gr-s::before { flex: none; padding: 0; font-size: .68rem; }
+  .gr-table td.gr-s input.gr-score { width: calc(100% - 8px); min-width: 0; }
+  .gr-table td.gr-del { justify-content: flex-end; }
+  .gr-table td.gr-del::before { display: none; }
+}
+.gr-print-text { display: none; }
+@page grading { size: A4 landscape; margin: 10mm; }
+@media print {
+  #gr-edit { page: grading; }
+  #gr-edit textarea { display: none !important; }
+  .gr-print-text { display: block; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .gr-table { font-size: .78rem; }
+  .gr-table th, .gr-table td { padding: 4px 6px; }
+  .gr-table input, .gr-table select, .gr-table textarea, .gr-head input, .gr-head select, .gr-overall textarea { border: 0 !important; background: none !important; box-shadow: none !important; padding: 0 !important; min-height: 0 !important; appearance: none; -webkit-appearance: none; color: #111 !important; resize: none; }
+  .gr-table input::placeholder, .gr-table textarea::placeholder { color: transparent; }
+  .gr-avg span, .tag { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .gr-guide summary { list-style: none; }
+}
+
 /* Medals */
 .medal-list { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
 .medal { display: flex; gap: 14px; align-items: center; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; border-left: 5px solid var(--medal, var(--bronze)); }
