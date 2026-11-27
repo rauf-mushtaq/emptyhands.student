@@ -767,42 +767,51 @@ body.in-chat .chat-compose { flex: none; position: static; }
 .gr-share p { margin: 0; max-width: 640px; }
 .gr-share .row-actions { margin: 0; }
 
-/* The paper grading sheet (Sensei panel: Print marking sheet), like the Excel grading record sheet */
+/* The paper grading sheet (Sensei panel: Print marking sheet): the app's look, on one A4 landscape page */
 .gr-paper { display: none; }
 @page paper { size: A4 landscape; margin: 7mm; }
 @media print {
   body.printing-paper > :not(#gr-paper) { display: none !important; }
   body.printing-paper { background: #fff !important; padding: 0 !important; }
-  body.printing-paper .gr-paper { display: block !important; page: paper; font-family: Arial, Helvetica, sans-serif; color: #000; }
+  body.printing-paper .gr-paper { display: block !important; page: paper; font-family: var(--sans); color: var(--ink); }
 }
 .gr-paper * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-.pp-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 6mm; margin-bottom: 1.5mm; font-size: 9pt; }
-.pp-head p { margin: 0 0 .8mm; }
-.pp-date { margin-left: 14mm; }
-.pp-fill { display: inline-block; min-width: 32mm; margin-right: 5mm; padding: 0 2mm; border-bottom: .3mm solid #000; }
-.pp-note { margin: 0; font-size: 8pt; text-align: right; }
-.pp-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 7.5pt; }
-.pp-table th, .pp-table td { border: .25mm solid #000; padding: 0; }
-.pp-heads th { height: 41mm; vertical-align: bottom; text-align: center; }
-.pp-tech { background: #c0c0c0; }
-.pp-tech.pp-supp, .pp-white { background: #fff; }
-.pp-table .vt { display: inline-block; max-height: 39.5mm; padding: .8mm .3mm; writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 700; font-size: 6.7pt; line-height: 1.1; text-align: left; }
-.pp-table .pc-yellow { text-shadow: 0 0 .3mm rgba(0, 0, 0, .7); }
-.pp-who { padding: 2mm !important; vertical-align: middle !important; color: #000080; font-size: 8.5pt; }
-.pp-comh { vertical-align: middle !important; font-size: 9pt; }
-.pp-groups th { padding: 1mm .5mm; font-size: 7.5pt; overflow: hidden; white-space: nowrap; }
-.pp-table tbody tr { height: 7.3mm; }
+.pp-head { display: flex; align-items: center; gap: 4mm; margin-bottom: 2.5mm; padding-bottom: 2.5mm; border-bottom: .5mm solid var(--ink); }
+.pp-logo { width: 15mm; height: 15mm; border-radius: 50%; flex: none; }
+.pp-title { flex: 1; min-width: 0; }
+.pp-eyebrow { margin: 0; font-size: 6.5pt; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--seal); }
+.pp-title h1 { margin: .5mm 0; font-family: var(--serif); font-size: 15pt; font-weight: 600; line-height: 1.1; }
+.pp-sub { margin: 0; font-size: 7pt; color: var(--ink-3); }
+.pp-meta { display: grid; grid-template-columns: repeat(2, auto); gap: 1mm 6mm; margin: 0; font-size: 8pt; }
+.pp-meta dt { font-size: 5.8pt; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--bronze); }
+.pp-meta dd { margin: 0; min-width: 34mm; padding-bottom: .4mm; border-bottom: .25mm solid var(--paper-3); font-weight: 700; }
+.pp-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 7pt; }
 .pp-table thead { display: table-header-group; }
 .pp-table tr { break-inside: avoid; }
-.pp-n { text-align: center; font-weight: 700; color: #000080; font-size: 8pt; }
-.pp-name { padding: 0 2mm !important; background: #000; font-weight: 700; font-size: 9pt; line-height: 1.15; overflow: hidden; }
-.pp-name small { display: block; font-size: 6.5pt; font-weight: 400; opacity: .9; }
-.pp-foot { display: flex; gap: 6mm; margin-top: 2mm; font-size: 6.6pt; line-height: 1.25; break-inside: avoid; }
-.pp-foot p { margin: 0 0 .3mm; }
-.pp-guide { flex: 1.3; }
-.pp-std { margin-top: .8mm !important; }
+.pp-table th, .pp-table td { padding: 0; border: .2mm solid #d6ccba; }
+.pp-table .pp-start { border-left: .45mm solid var(--ink); }
+.pp-groups th { padding: 1.1mm .5mm; border-color: var(--ink); background: var(--ink); color: #fff; font-size: 7pt; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; overflow: hidden; }
+.pp-groups .pp-g0 { text-align: left; padding-left: 2mm; }
+.pp-heads th { height: 39mm; vertical-align: bottom; text-align: center; background: #faf6ee; }
+.pp-table .vt { display: inline-block; max-height: 37.5mm; padding: .8mm .3mm; writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 700; font-size: 6.7pt; line-height: 1.1; text-align: left; }
+.pp-who { padding: 2mm !important; text-align: left !important; vertical-align: middle !important; font-size: 7pt; font-weight: 400; color: var(--ink-2); background: #fff !important; }
+.pp-who span { display: block; }
+.pp-keyline { margin-top: 2mm; color: var(--ink-3); line-height: 1.35; }
+.pp-comh { background: #fff !important; }
+.pp-table tbody tr { height: 7.4mm; }
+.pp-table tbody tr:nth-child(even) td:not(.pp-name) { background: #fcfaf5; }
+.pp-n { text-align: center; font-size: 6.5pt; font-weight: 700; color: var(--ink-3); }
+.pp-name { padding: 0 2mm 0 2.6mm !important; box-shadow: inset 1.4mm 0 0 var(--belt); line-height: 1.12; overflow: hidden; background: #fff; }
+.pp-name b { display: block; font-size: 8.5pt; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-name small { display: block; font-size: 5.8pt; color: var(--ink-3); }
+.pp-foot { display: flex; gap: 6mm; margin-top: 2.5mm; font-size: 6.6pt; line-height: 1.3; break-inside: avoid; }
+.pp-foot h2 { margin: 0 0 1mm; font-family: var(--serif); font-size: 9pt; font-weight: 600; }
+.pp-foot p { margin: 0 0 .5mm; }
+.pp-guide { flex: 1.35; }
+.pp-chip { display: inline-block; min-width: 19mm; margin-right: 1mm; padding: .2mm 1.6mm; border-radius: 99px; font-weight: 700; font-size: 6.2pt; text-align: center; }
+.pp-std { margin-top: 1mm !important; color: var(--ink-2); }
 .pp-overall { flex: 1; }
-.pp-lines { min-height: 20mm; padding: 1mm 2mm; border: .25mm solid #000; white-space: pre-wrap; line-height: 6mm; background: repeating-linear-gradient(transparent 0 5.75mm, #999 5.75mm 6mm); }
+.pp-lines { min-height: 19mm; padding: .5mm 2mm; border: .25mm solid #d6ccba; border-radius: 2mm; white-space: pre-wrap; line-height: 5.5mm; background: repeating-linear-gradient(transparent 0 5.3mm, #ddd4c3 5.3mm 5.5mm); }
 
 /* Medals */
 .medal-list { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
