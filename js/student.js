@@ -1227,6 +1227,7 @@ const RESULT_AREAS = [['kihon', 'Kihon'], ['kicks', 'Kicks'], ['kata', 'Kata'], 
 function resultHTML(r) {
   const belt = LICENCE_BELTS.find(b => b.grade === r.belt);
   const min = typeof r.min === 'number' ? r.min : null;
+  const max = r.outOf || 4; // results shared before marks went out of 5 were out of 4
   const marks = RESULT_AREAS.filter(([k]) => typeof (r.marks || {})[k] === 'number');
   const when = r.date ? dateOf(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
   return `<article class="card res-card">
@@ -1240,10 +1241,10 @@ function resultHTML(r) {
       ${marks.map(([k, label]) => {
         const v = r.marks[k];
         return `<div class="res-mark"><span>${label}</span>
-          <span class="res-bar" role="img" aria-label="${label}: ${v} out of 4"><i class="${min !== null && v < min ? 'is-low' : ''}" style="width:${v / 4 * 100}%"></i>${min !== null ? `<b class="res-min" style="left:${min / 4 * 100}%"></b>` : ''}</span>
-          <strong>${v}<small>/4</small></strong></div>`;
+          <span class="res-bar" role="img" aria-label="${label}: ${v} out of ${max}"><i class="${min !== null && v < min ? 'is-low' : ''}" style="width:${v / max * 100}%"></i>${min !== null ? `<b class="res-min" style="left:${min / max * 100}%"></b>` : ''}</span>
+          <strong>${v}<small>/${max}</small></strong></div>`;
       }).join('')}
-      ${marks.length ? `<p class="res-avg"><span>Average <b>${Math.round((r.average || 0) * 10) / 10}</b> out of 4</span>${min !== null ? `<span class="res-key"><b class="res-min-key"></b> Minimum for this grade: ${min}</span>` : ''}</p>` : ''}
+      ${marks.length ? `<p class="res-avg"><span>Average <b>${Math.round((r.average || 0) * 10) / 10}</b> out of ${max}</span>${min !== null ? `<span class="res-key"><b class="res-min-key"></b> Minimum for this grade: ${min}</span>` : ''}</p>` : ''}
       ${r.comments ? `<blockquote class="res-comment">${esc(r.comments)}<cite>Sensei</cite></blockquote>` : ''}
     </div>
   </article>`;
