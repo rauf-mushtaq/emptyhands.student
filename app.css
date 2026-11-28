@@ -715,6 +715,31 @@ body.in-chat .chat-compose { flex: none; position: static; }
 .syl-t.b-black { color: #111; } .syl-dot.b-black { background: #111; }
 .syl-t.b-nidan { color: #111; text-decoration: underline 2px #c9a227; text-underline-offset: 4px; font-weight: 600; } .syl-dot.b-nidan { background: #111; box-shadow: 0 0 0 2px #c9a227; }
 .syl-combos { margin-top: 14px; }
+/* Theory Questions tab (Sensei: Gradings) */
+.gr-tabs { margin: 0 0 18px; }
+.gq-notes { margin-bottom: 4px; }
+.gq-notes summary { cursor: pointer; font-weight: 700; }
+.gq-notes li { padding: 6px 0; border-top: 1px solid var(--line); line-height: 1.45; }
+.gq-notes li:first-child { border-top: 0; }
+.gq-pick .syl-belt[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--paper); box-shadow: none; }
+.gq-pick .syl-belt[aria-pressed="true"] .syl-dot { box-shadow: 0 0 0 2px var(--paper); }
+.gq-pick .syl-belt[aria-pressed="true"] .syl-dot.b-nidan { box-shadow: 0 0 0 2px #c9a227; }
+.syl-dot.is-stripe { background-image: linear-gradient(90deg, transparent 58%, #fff 58%, #fff 74%, transparent 74%); }
+.gq-grade { --gq-red: #d32f2f; --gq-orange: #f57c00; --gq-yellow: #f5d000; --gq-green: #2e9e4a; --gq-purple: #8e3fb8; --gq-brown: #8d5524; --gq-black: #111; --gq-nidan: #111;
+  border-top: 6px solid var(--belt, var(--ink)); padding-top: 18px; }
+.gq-head h2 { margin: 2px 0 0; font-family: var(--serif); font-size: 1.7rem; }
+.gq-head .eyebrow { margin: 0; }
+.gq-focus { margin: 8px 0 4px; color: var(--ink-2); line-height: 1.5; }
+.gq-sec { margin-top: 18px; }
+.gq-sec h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0 0 8px; padding-bottom: 6px; border-bottom: 2px solid var(--line); font-size: 1.05rem; }
+.gq-sec h3 small { font-size: .8rem; font-weight: 500; color: var(--ink-3); }
+.gq-list { margin: 0; padding-left: 1.6em; }
+.gq-list li { padding: 8px 0 8px 4px; border-top: 1px solid var(--line); line-height: 1.5; }
+.gq-list li:first-child { border-top: 0; }
+.gq-list li::marker { font-weight: 700; color: var(--ink-3); }
+.gq-list li.is-hard { background: linear-gradient(90deg, #fbf3e3, transparent 80%); }
+.gq-hard { display: inline-block; margin-right: 2px; padding: 1px 8px; border-radius: 99px; background: var(--seal); color: #fff; font-size: .72rem; font-weight: 800; letter-spacing: .02em; vertical-align: 1px; }
+.gq-look { margin: 6px 0 0; padding: 8px 10px; border-left: 3px solid var(--bronze-2); background: var(--paper-2); border-radius: 0 8px 8px 0; font-size: .9rem; color: var(--ink-2); }
 .syl-combos summary { cursor: pointer; font-weight: 700; }
 .syl-table td:first-child { white-space: nowrap; }
 .syl-t.b-all { color: var(--ink-2); font-weight: 500; } .syl-dot.b-all { background: linear-gradient(90deg, #d32f2f, #f57c00, #f5d000, #2e9e4a, #8e3fb8, #8d5524, #111); }
